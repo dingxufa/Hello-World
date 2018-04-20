@@ -69,7 +69,7 @@ agent.sinks.k1.hdfs.path=/logs/apache/access/%Y/%m/%D/%H
 当文件被写到HDFS中时会添加一个.tmp扩展名，当文件关闭时，该扩展名会被删除
 
 
-事件序列化器：flume事件转换为另一种格式来输出的机制 （强调的是输出的内容的形式）
+事件序列化器：flume事件转换为另一种格式来输出的机制 （强调的是输出的内容）
 1.text序列化器：只输出flume事件体丢掉头信息，每个事件后有个换行符
 2.text_with_heads序列化器：保存事件头 {key=value,key=value} body text 
 3.avro_event序列化器
