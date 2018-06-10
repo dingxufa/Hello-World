@@ -1,4 +1,8 @@
-# 1.maven
+[TOC]
+
+
+
+# 1.maven简介
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -57,11 +61,11 @@ mvn archetype:generate   自动生成项目骨架
 - mvn.repository.com
 - sonatype.org/nexus
 
+
+
 ##2.1**maven 是如何搜索依赖的？**
 
 首先会在本地仓库查询，如果本地仓库没有，就去中央仓库查询
-
-----
 
 依赖是会传递的：
 
@@ -76,13 +80,15 @@ A--->C     B-->  ====>  B ---> C  **这种依赖是基于compile范围进行传�
 ##2.2**依赖的范围：**
 
 - test 	测试范围有效，在编译和打包时都不会使用这个依赖
-- compile	编译范围有效，在编译和打包时都会讲依赖存储进去    **默认依赖**
-- provided	在编译和测试的范围有效，最后生成war包不会加入，例如：servlet-api   因为servlet-api 在Tomcat中已经存在，如果再打包后冲突
+	 compile	编译范围有效，在编译和打包时都会讲依赖存储进去    **默认依赖**
+	 provided	在编译和测试的范围有效，最后生成war包不会加入，例如：servlet-api   因为servlet-api 在Tomcat中已经存在，如果再打包后冲突
 - runtime   在运行的时候依赖，在编译时不依赖
 
 
 
-----
+
+
+
 
 ##2.3**传递的冲突性问题**
 
