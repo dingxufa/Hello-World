@@ -1,8 +1,4 @@
-[TOC]
-
-
-
-# 1.maven简介
+# 1.maven
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -61,13 +57,11 @@ mvn archetype:generate   自动生成项目骨架
 - mvn.repository.com
 - sonatype.org/nexus
 
-
-
-
-
 ##2.1**maven 是如何搜索依赖的？**
 
 首先会在本地仓库查询，如果本地仓库没有，就去中央仓库查询
+
+----
 
 依赖是会传递的：
 
@@ -76,8 +70,6 @@ A--->C     B-->  ====>  B ---> C  **这种依赖是基于compile范围进行传�
 如果scope没有写默认是compile
 
 对于依赖的传递而言，主要是针对compile作用域传递
-
-
 
 
 
@@ -90,9 +82,7 @@ A--->C     B-->  ====>  B ---> C  **这种依赖是基于compile范围进行传�
 
 
 
-
-
-
+----
 
 ##2.3**传递的冲突性问题**
 
@@ -589,5 +579,313 @@ nexus/sonatype-work/nexus/indexer/central-ctx/
       <password>123456</password>
     </server>
   
+```
+
+
+
+
+
+# 3.生命周期
+
+
+
+## 3.1clean  
+
+**Clean Lifecycle：在进行真正的构建之前进行一些清理工作**
+
+pre-clean   	执行一些需要在clean之前完成的工作
+
+clean		移除所有上一次构建生成的文件
+
+post-clean 	执行一些需要在clean之后完成的工作
+
+
+
+## 3.2compile
+
+**Default Lifecycle：构建的核心部分，编译、测试、打包、部署**
+
+- validate
+- generate-sources
+- process-sources
+- generate-resources
+- process-resources：复制并处理资源文件至目标目录，准备打包
+- compile：编译项目源代码
+- process-clases
+- generate-test-sources
+- procss-test-sources
+- generate-test-resources
+- process-test-resources：复制并处理资源文件至目标测试目录
+- test-compile：编译测试源代码
+- process-test-classes
+- test：使用合适的单元测试框架测试运行，这些测试代码将不会被打包或部署
+- prepare-package
+- package：接受编译好的代码，打包成可发布的格式，如jar
+- pre-integration-test
+- integration-test
+- post-integration-test
+- verify
+- install：将包安装至本地仓库，以便让其它项目依赖
+- deploy：将最终的包复制到远程仓库，以便让其它开发人员与项目共享
+
+
+
+## 3.3site
+
+**Site Lifecycle：生成项目报告、生成站点、发布站点**
+
+
+
+## 3.4插件
+
+插件是maven的核心，所有的操作都是基于插件来完成的
+
+为了让一个插件中可以实现多个类似的功能，maven为插件设定了目标，一个插件中可能有多个目标
+
+其实生命周期中的重要的阶段都是由插件的一个具体目标来执行的
+
+
+
+parent-pom.xml
+
+```xml
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>org.konghao.user</groupId>
+  <artifactId>user-parent</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+  <packaging>pom</packaging>
+  
+  <modules>
+  	<module>../user-core</module>
+  	<module>../user-dao</module>
+  	<module>../user-log</module>
+  	<module>../user-service</module>
+  </modules>
+  
+  <url>http://maven.apache.org</url>
+<distributionManagement>
+  
+  	<snapshotRepository>
+  		<id>user-snapshots</id>
+  		<name>User Project SNAPSHOTS</name>
+  		<url>http://192.168.0.199:8081/nexus/content/repositories/MyUserReposSnapshots/</url>
+  	</snapshotRepository>
+  	
+  	<repository>
+  		<id>user-releases</id>
+  		<name>User Project Release</name>
+  		<url>http://192.168.0.199:8081/nexus/content/repositories/MyUserReposRelease/</url>
+  	</repository>
+  	
+  </distributionManagement>
+  
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <junit.version>4.10</junit.version>
+    <mysql.driver>com.mysql.jdbc.Driver</mysql.driver>
+    <mysql.url>jdbc:mysql://localhost:3306/mysql</mysql.url>
+    <mysql.username>root</mysql.username>
+    <mysql.password>123456</mysql.password>
+  </properties>
+    
+    <dependencyManagement>
+  	<dependencies>
+	  	<dependency>
+	  		<groupId>junit</groupId>
+	  		<artifactId>junit</artifactId>
+	  		<version>${junit.version}</version>
+	  		<scope>test</scope>
+	  	</dependency>
+  	</dependencies>
+  </dependencyManagement>
+    
+<build>
+  	<pluginManagement>  
+  		<plugins>
+  			<plugin>
+  				<groupId>org.apache.maven.plugins</groupId>
+	        	<artifactId>maven-source-plugin</artifactId>
+	       	    <version>2.1.2</version>
+	       	    <executions>
+	       	    	<execution> #在package运行之后运行maven-source-plugin插件的ar-no-fork目标
+	       	    		<phase>package</phase>
+	       	    		<goals><goal>jar-no-fork</goal></goals>
+	       	    	</execution>
+	       	    </executions>
+  			</plugin>
+  			
+  			<plugin>
+  				<groupId>org.apache.maven.plugins</groupId>
+        		<artifactId>maven-rar-plugin</artifactId>
+        		<version>2.2</version>
+        		<executions>
+        			<execution>
+        				<phase>package</phase>
+        				<goals><goal>rar</goal></goals>
+        			</execution>
+        		</executions>
+  			</plugin>
+  			
+  			<plugin>
+  				<groupId>org.codehaus.mojo</groupId>
+        		<artifactId>sql-maven-plugin</artifactId>
+       			<version>1.5</version>
+       			<dependencies> #当前SQL插件的依赖，即使上面有也要重新写
+       				<dependency>
+       					<groupId>mysql</groupId>
+						<artifactId>mysql-connector-java</artifactId>
+						<version>5.1.18</version>
+       				</dependency>
+       			</dependencies>
+       			<configuration> #依赖的配置属性
+       				  <driver>${mysql.driver}</driver>
+			          <url>${mysql.url}</url>
+			          <username>${mysql.username}</username>
+			          <password>${mysql.password}</password>
+			          <sqlCommand>  #package执行后执行SQL
+			          	create database IF NOT EXISTS maven_test
+			          </sqlCommand>
+       			</configuration>       			
+       			<executions>
+       				<execution>
+       					<phase>package</phase>
+       					<goals>
+       						<goal>execute</goal>
+       					</goals>
+       				</execution>
+       			</executions>
+  			</plugin>
+  		</plugins>
+  	</pluginManagement>
+  </build>
+    </project>
+```
+
+子类pom.xml
+
+```xml
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  
+  <parent>
+  	<groupId>org.konghao.user</groupId>
+  	<artifactId>user-parent</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<relativePath>../user-parent/pom.xml</relativePath>
+  </parent>
+
+  <artifactId>user-core</artifactId>
+  <name>user-core</name>
+    <build>
+  	<plugins>
+  		<plugin>
+  			<groupId>org.apache.maven.plugins</groupId>
+        	<artifactId>maven-source-plugin</artifactId>
+  		</plugin>
+  		
+  		<plugin>
+  			<groupId>org.codehaus.mojo</groupId>
+        	<artifactId>sql-maven-plugin</artifactId>
+  		</plugin>
+  		
+  		<plugin>
+  			<groupId>org.apache.maven.plugins</groupId>
+        	<artifactId>maven-rar-plugin</artifactId>
+  		</plugin>
+  	</plugins>
+  </build>
+</project>
+```
+
+
+
+mvn help:describe  -DgroupId=   -DartifactId=    -Dversion=
+
+
+
+## 3.5web
+
+pom.xml
+
+```xml
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>org.konghao.user</groupId>
+  <artifactId>user-web</artifactId>
+  <packaging>war</packaging>
+  <version>0.0.1-SNAPSHOT</version>
+  <name>user-web Maven Webapp</name>
+  <url>http://maven.apache.org</url>
+  <dependencies>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.10</version>
+      <scope>test</scope>
+    </dependency>
+    
+    <dependency>
+	  <groupId>servletapi</groupId>
+	  <artifactId>servletapi</artifactId>
+	  <version>2.4</version>
+	  <scope>provided</scope>
+	</dependency>
+	
+	<dependency>
+	  <groupId>javax.servlet.jsp</groupId>
+	  <artifactId>jsp-api</artifactId>
+	  <version>2.2</version>
+	  <scope>provided</scope>
+	</dependency>
+	
+	<dependency>
+		<groupId>mysql</groupId>
+		<artifactId>mysql-connector-java</artifactId>
+		<version>5.1.18</version>
+	</dependency>
+	
+	
+  </dependencies>
+  
+  <distributionManagement>
+  </distributionManagement>
+  <build>
+    <finalName>user-web</finalName>
+    
+    <plugins>
+    	<plugin>
+    		<groupId>org.apache.maven.plugins</groupId>
+	        <artifactId>maven-war-plugin</artifactId>
+	        <version>2.2</version>
+	        <configuration>  #配置插件的参数 可以根据插件源码来查看
+	        	<warName>hello</warName>
+	        </configuration>
+    	</plugin>
+    	
+    	<plugin> #jetty自动发布部署，可以直接在浏览器里访问不需要再将war包放入Tomcat启动Tomcat
+		  <groupId>org.mortbay.jetty</groupId>
+		  <artifactId>jetty-maven-plugin</artifactId>
+		  <configuration>
+		    <scanIntervalSeconds>10</scanIntervalSeconds>
+		    <webApp>
+		      <contextPath>/kk</contextPath>
+		    </webApp>
+		    <connectors>
+		       <connector implementation="org.eclipse.jetty.server.nio.SelectChannelConnector">
+		          <port>8787</port>
+		          <maxIdleTime>60000</maxIdleTime>
+		       </connector>
+		     </connectors>
+		  </configuration>
+		</plugin>
+    </plugins>
+  </build>
+</project>
+
 ```
 
