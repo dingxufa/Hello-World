@@ -54,10 +54,16 @@ mvn archetype:generate   自动生成项目骨架
 # 2.依赖
 
 - 所有的依赖都是通过坐标来进行存储的 GAV -- groupId  artifactId  version
+
 - mvn.repository.com
+
 - sonatype.org/nexus
 
-##2.1**maven 是如何搜索依赖的？**
+  
+
+  
+
+## 2.1maven是如何搜索依赖的？
 
 首先会在本地仓库查询，如果本地仓库没有，就去中央仓库查询
 
@@ -81,8 +87,6 @@ A--->C     B-->  ====>  B ---> C  **这种依赖是基于compile范围进行传�
 - runtime   在运行的时候依赖，在编译时不依赖
 
 
-
-----
 
 ##2.3**传递的冲突性问题**
 
