@@ -19,6 +19,7 @@ redis-cli.exe
 
 
 ```shell
+
 D:\software\Redis-x64-3.2.100>redis-cli.exe
 127.0.0.1:6379> set hello world
 OK
