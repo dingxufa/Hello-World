@@ -1349,6 +1349,364 @@ public final class Counter{
 
 
 
-被封闭对象一定不能超出它们既定的作用域 。对象可以封闭在类的一个实例 （例如咋为类 的一个私有成员〉
-中，或者封闭在某个作用域 内 （ 例如作为一个局部变量），再或者封闭在线 程内 （例如在某个线程中将对象从一个方法传递到另一个方法 ，而不是在多个线程之间共享该 对象〉 。当然，对象本身不会逸出一一出现逸出情况的原因通常是由于开发人员在发布对象时 超出了对象既定的作用域。
+**被封闭对象一定不能超出它们既定的作用域** 。==对象可以封闭在类的一个实例 （例如咋为类的一个私有成员〉==
+==中，或者封闭在某个作用域 内 （ 例如作为一个局部变量），再或者封闭在线 程内 （例如在某个线程中将对象从一个方法传递到另一个方法 ，而不是在多个线程之间共享该 对象〉== 。当然，对象本身不会逸出---------出现逸出情况的原因通常是由于开发人员在发布对象时 **超出了对象既定的作用域**。
+
+程序清单 4-2  中的PersonSet 说明了==**如何通过封闭与加锁等机制使一个类成为线程安全 的 〈 即使这个类的状态变量并不是线程安全的 ）**==。Person Set 的状态由 HashSet 来管理的 ，而 **HashSet  并非线程安全**的 。但**由于 mySet  是私有的井且不会逸出 ，因此 Hash Set 被封闭在 PersonSet  中**。唯一能**访问 mySet 的代码**路径是 addPerson 与 containsPerson ，在**执行它们时都 要获得 PersonSet  上的锁**。Person Set 的状态完全由它的内置锁保护，因而PersonS et 是一个线程安全的类 。
+
+
+
+```java
+程序清单 4-2 通过封闭机制来确保线程安全
+
+@ThreadSafe
+public class Person{
+	@GuardedBy("this") private final Set<Person> mySet = new HashSet<Person>();
+	
+    public synchronized void addPerson(Person p){
+    	mySet.add(p);
+    }
+    
+    public  synchronized  boolean  containsPerson ( Person  p ) {
+    	return  mySet.contains (p) ;
+    }
+    	
+}
+```
+
+这个示例并未对 Person  的线程安全性做任何假设 ，但如果Person 类是可变的 ，那么在访 问从 PersonSet 中获得的 Person 对象时，还需要额外的同步。要想安全地使用 Person 对象 ，最可靠的方法就是使 Person 成为一个线程安全的类 。另外，也可以使用锁来保护 Person 对象， 并确保所有客户代码在访 问Person对象之前都已经获得正确的锁。
+
+**==实例封闭==是构建线程安全类的一 个最简单方式 ，它还使得在锁 策略的选择上拥有了更多的灵活性**。在PersonSet 中使用了它的内置锁来保护它的状态，但对于其他形式的锁来说 ，只要自始至终都使用同一个锁，就可以保护状态 。**实例封闭还使得不同的状态变量可以由不同的锁 来保护**。（后面章节的 ServerStatus   中就使用了多个锁来保护类的状态 。）
+
+在 Java 平台的类库中还有很多线程封闭的示例 ，其中**有些类的唯一用途就是将非线程安全的类转化为线程安全的类** 。==一些基本的容器类并非线程安全的 ，例如 ArrayList 和 HashMp,== 但类库提供了==包装器工厂方法 （例如 Collections.synhronizedList 及其类似方法==〕 ，使得这些非 线程安全的类可以在多线程环境中安全地使用 **。这些工厂方法能通过 “装饰器 （ Decorator 〕”模 式（Gamma et al., 1995） 将容器类封装在一个同步的包装器对象中，而包装器能将接口中的每个 方法都实现为同步方法 ，并将调用请求转发到底层的容器对象上** 。==**只要包装器对象拥有对底层 容器对象的唯一引用 （即把底层容器对象封闭 在包装器中），那么它就是线程安全的**== 。在这些方法的 Javadoc 中指出，==对底层容器对象的所有访问必须通过包装器来进行== 。
+
+当然，如果将一个本该被封闭 的对象发布出去，那么也能破坏封闭性 。如果一个对象本应 该封闭在特定的作用域内，那么让该对象逸出作用域就 是一个错误。当发布其他对象时 ，例如 **迭代器或内部的类实例，可能会间接地发布被封 闭对象，同样会使被封闭对象逸出。**
+
+> 封闭机制史易于构造线程安全的类，因为当封闭类的状态时，在分析类的线程安全性时就无须检查整个程序。
+
+
+
+
+
+### 4.2 .1 Java 监视器模式
+
+-------
+
+从线程封闭原则及其逻辑推论可以得出 Java 监视器模式＠。**遵循 Java 监视器模式的对象会把==对象的所有可变状态都封装起来 ，并由对象自己的内置锁来保护== 。**
+
+>＠ 虽然 Java 监视器模式来自于 Hoare 对监视器机制的研究工作 （Hoare, 1974），但这种模式与真正的监视器类之间存在一些重要的差异。进入和退出同步代码块的字节指令也称为 monitorenter 和monitorexit，而 Java 的内置锁也称为监视器锁或监视器 。
+
+
+
+在程序清单 4-1 的Counter 中给出了这种模式的一个典型示例。**在 Counter 中封装了一个状态变量value ，对该变量的所有访问都需要通过 Counter 的方陆来执行 ，并且这些方法都是同步的**。
+
+在许多类中都使用了 ==Java 监视器模式 ，例如 Vector 和 Hashtable== 。在某些情况下 ，程序需要一种更复杂的同步策略。第 11 章将介绍如何通过细粒度的加锁策略来提高可伸缩性 。Java  监 视器模式的主要优势就在于它的简单性。
+
+Java 监视器模式仅仅是一种编写代码的约定，对于任何一种锁对象 ，只要自始至终都使用该锁对象，都可以用来保护对象的状态。程序清单 4-3 给出了如何使用私有锁来保护状态 。
+
+```java
+程序清单 4-3   通过一个私有锁来保护状态
+public class PrivateLock{
+	private final Object myLock = new Object();
+	@GuardedBy("myLock") Widget widget;
+	
+    void someMethod(){
+        synchronized(myLock){
+            //访问或修改widget的状态
+        }
+    }
+}
+
+```
+
+
+
+==使用私有的锁对象而不是对象的内置锁== （或任何其他可通过公有方式访问的锁〉，有许多优点。**私有的锁对象可以将锁封装起来，==使客户代码无怯得到锁==，但客户代码可以通过公有方能来访问锁，以便（ 正确或者不正确地） 参与到色的同步策略中。**如果客户代码错误地获得了另一个对象的锁，那么可能会产生活跃性问题。此外，要想验证某个公 有访问的锁在程序中是否被正确地使用 ，则需要检查整个程序 ，而不是单个的类。
+
+
+
+### 4.2.2     示例 ：车辆追踪
+
+------
+
+程序清单 4-1 中的 Counter 是一个简单但用处不大的 Java 监视器模式示例 。我们来看一个 更有用处的示例：一个用于调度车辆的 “车辆追踪器”，例如出租车、警车、货车等。首先使用监视器模式来构建车辆追踪器 ，然后再尝试放宽某些封装性需求同时又保持线程安全性 。
+
+每台车都由一个 String 对象来标识，井且拥有一个相应的位置坐标 （x,   y）。在 VehicleTracker 类中封装了车辆的标识和位置，因而它非常适合作为基于 MVC(Model-View-Controller    ，模 型视图 控制器 ） 模式的 GUI  应用程序中的数据模型，井且该模型将由一个视图线程和多个执行更新操作的线程共享。视图线程会读取车辆的名字和位置 ，并将它们显示在界面上
+
+```java
+Map<String,Point>locations = vehicles.getLocations ( ) ; 
+for(String key  : locations.keySet () ){
+    renderVehicle(key, locations.get (key) ) ;
+}
+```
+
+类似地，执行更新操作的线程通过从 GPS 设备上获取的数据或者调度员从 GUI 界面上输入的数据来修改车辆的位置。
+
+```JAVA
+void vehicleMoved (VehicleMovedEvent  evt ){ 
+    Pointloc = evt.getNewLocation ( ) ;
+	vehicles.setLocation (evt.getVehicleid ( ) ,loc.x,loc.y) ;
+
+```
+
+视图线程与执行更新操作的线程将**并发**地访问数据模型，因此该模型必须是线程安全的。程 序清单 4-4 给出了一个基于 Java 监视器模式实现的 “车辆追踪器飞 其中使用了程序清单 4-5 中 的MutablePoint 来表示车辆的位置 。
+
+```java
+程序清单4-4    基于监视器模式的车辆追踪
+public class MonitrVehicleTracker{
+	@GuardedBy("this")private final  Map< String,  MutablePoint >  locations ;
+	
+    public MonitorVehicleTracker(Map<String, MutablePoint > locations){
+    	this.locations = deepCopy(locations) ;
+    }
+	
+    public synchronized Map< String,MutablePoint> getLocations(){
+    	return deepCopy(locations) ;
+    }
+    
+    public synchronized MutablePoint getLocation(String id){
+    	MutablePoint loc  = locations.get(id) ;
+    	return loc == null?null :new MutablePoint(loc) ;
+    } 
+	
+    public synchronized	void setLocation(String id,int x,int y){
+    	MutablePoint loc = locations.get(id) ;
+        if(loc == null){
+        	throw new IllegalArgumentException（”No such ID ：” ＋ id) ; 
+        }
+		loc.x  = x;
+		loc.y =  y;
+    }
+
+    private static Map<String,MutablePoint> deepCopy(Map<String,MutablePoint> m){
+		Map<String,MutablePoint> result =
+					new HashMap<String,MutablePoint>( ) ;
+        for(String id : m.keySet( ) ){
+        	result.put( id,  new MutablePoint(m.get(id) ) ) ;
+        }
+ 		return  Collections.unmodifiableMap( result ) ;
+    }
+}
+
+public class MutablePoint {  / *	程序清羊 4-5	*/  }
+
+
+```
+
+
+
+**虽然类 MutablePoint 不是线程安全的 ，但追踪器类是线程安全的** 。它所包含的 Map对象和可变的Point 对象都未曾发布 。当需要返回车辆的位置时 ，通过MutablePoint 拷贝构造函数或者deepCopy方法来复制正确的值，从而生成一个新的Map 对象，并且该对象中的值与原有Map 对象中的 key 值和 value 值都相同 。＠
+
+>＠ 注意，deepCopy 并不只是用 unrnodifiableMap 来包装 Map 的，==因为这只能防止容器对象被修改，而 不能防止调用者修改保存在容器中的可变对象== 。基于同样的原因，如果只是通过拷贝构造函数来填充 deepCopy 中的HashMap ，那么同样是不正确的，因为这样做只复制了指向Point 对象的引用，而不是 Point 对象本身
+>
+>
+>
+
+
+
+```java
+程序清单 4-5  与 Java.awt.Point 类似的可变 Point 类 （不要这么做）
+@NotThreadSafe
+public class MutablePoint{ 
+	public int x,y;
+	
+	public MutablePoint(){x  =  O ; y  =  O;}
+
+	public MutablePoint (MutablePoint p){ 
+		this .x  =  p.x;
+		this.y  =  p.y;
+	}
+}
+
+```
+
+
+
+在某种程度上，**这种实现方式是通过在返回客户代码之前复制可变的数据来维持线程安全性的**。通常情况下 ，这并不存在性能问题，但在==车辆容器非常大的情况下将极大地降低性能==＠。 此外，<u>由于每次调用getLocation    就要复制数据 ，因此将出现一种错误情况一一虽然车辆的实际位置发生了变化 ，但返回的信息却保持不变</u> 。这种情况是好还是坏 ，要取决于你的需求。如果在 location 集合上存在内部的一致性需求，那么这就是优点，在这种情况下返回一致的快照就 非常重要。然而，如果调用者需要每辆车的最新信 息，那么这就是缺点，因为这需要非常频繁地刷新快照。
+
+>＠  由于d.eepCopy 是从一个 synchronized 方泣中调用的，因此在执行时间较长的复制操作中 ，tracer的内置锁将一直被占有，当有大量车辆需要追踪时，会严重降低用户界面的响应灵敏度。
+
+
+
+
+
+## 4.3   线程安全性的委托
+
+大多数对象都是组合对象。**当从头开始构建一个类，或者将多个非线程安全的类组合为一 个类时，Java 监视器模式是非常有用的**。==但是，如果类中的各个组件都已经是线程安全的 ，会 **是**什么情况呢 ？==我们是否需要再增加一个额外的线程安全层 ？答案是 “视情况而定”。在某些 情况下 ，通过多个线程安全类组合而成的类是线程安全的  （如程序清单 4-7 和程序清单 4-9 所 示），而在某些情况下，这仅仅是一个好的开端 （ 如程序清单 4-10 所示）。
+
+在前面的 CountingFactorizer 类中 ，我们在一个**无状态的类中增加了一个 Atomic Long 类型的域 ，并且得到的组合对象仍然是线程安全的** 。由于 CountingFactorizer 的状态就是 AtomicLong 的状态，而 AtomicLong 是线程安全的 ，因此 CountingFactorizer 不会对 counter 的 状态施加额外的有效性约束 ，所以很容易知道 CountingFactorizer 是线程安全的 。我们可以说 CountingFactorizer 将它的线程安全性委托给 AtomicLong  来保证：之所以CountingF actorizer  是线程安全的 ，是因为 AtomicLong 是线程安全的 。θ
+
+>θ 如 果 count 不 是 final 类 型，那么要分析 CountingFactorizer 的 线 程 安 全 性 将 变 得 更 复 杂．如 果 CountingFactorizer 将 count 修改为指向另一个 Atomic Long 域的引用，那么必须确保count 的更新操作对于所有访问 count 的线程都是可见的，并且还要确保在count 的值上不存在竞态条件 ，这也是尽可能使用 final 类型域的另一个原因。
+
+
+
+### 4.3.1    示例 ：基于委托的车辆追踪器
+
+------
+
+下面将介绍一个更实际的委托示例 ，构造一个委托给线程安全类的车辆追踪器 。我 们 将 车 辆 的位 置 保 存 到 一·个 Map 对 象 中，因此 首 先 要 实现 一 个 ==线 程 安 全 的Map 类， ConcurrentHashMap== 。我们还可以用一个不可变的 Point 类来代替 MutablePoint 以保存位置 ，如 程序清单 4-6 所示。
+
+```java
+程序清单 4-6    在 DelegatingVehicleTracker  中使用的不可变 Point 类
+@Immutable
+public class Point{
+	public final int x,y;
+    public Point(){
+    	this.x = x;
+    	this.y = y;
+    }
+}
+
+```
+
+==由于Point 类是不可变的 ，因而它是线程安全的== 。**==不可变的值可以被自由地共享与发布==** ， 因此在返回 location 时不需要复制。
+
+在程序清单 4-7 的 Delegating VehicleTracker 中没有使用任何显式的同步 ，所有对状态的访 问都由 ConcurrentHashMap  来管理 ，而且 Map 所有的键和值都是不可变的 。
+
+```java
+程序清单 4-7   将线程安全委托给 ConcurrentHashMap
+@ThreadSafe
+public class DelegatingVehicleTracker{
+	private final ConcurrerentMap<String,Point >locations; 
+	private final Map<String,Point> unmodifiableMap;
+
+    public DelegatingVehicleTracker(Map<String,Point> points ){
+         locations  = new ConcurrentHashMap<String,Point>(points)  ;
+         unmodifiableMap  = Collections.unmodifiableMap(locations)  ;
+    }
+    
+    public Map<String,Point> getLocations(){
+    	return unmodifiableMap;
+    } 
+    
+    public Point getLocation(String id){
+    	return  locations.get(id);
+    } 
+
+    public void setLocation(String id ,int x,int y){
+        if(locations.replace(id,new Point(x,  y))   ==   null ){
+            throw new IllegalArgumentException (
+        			” invalid vehicle name ：”＋ id ) ;
+        }
+    }
+}
+
+```
+
+
+
+如果使用最初的MutablePoint类而不是Point  类，就会破坏封装性 ，**因为 getLocations会发布一个指向可变状态的引用 ，而这个引用不是线程安全的**。需要注意的是，我们稍微改变了 车辆追踪器类的行为。**在使用监视器模式的车辆追踪器中返回的是车辆位置的快照，而在使用委托的车辆追踪器中返回的是一个不可修改但却实时的车辆位置视图 。**这意味着，如果线程 A 调用 getLocations ，而线程B 在随后修改了某些点的位置，那么在返回给线程A 的Map中将反 映出这些变化 。在前面提到过，这可能是一种优点 （ 更新的数据〉，也可能是一种缺点 （ 可能导致不一致的车辆位置视图〉，具体情况取决于你的 需求。
+
+如果需要一个不发生变化的车辆视图 ，那么getLocations 可以返回对 locations 这个 Map 对象的一个浅拷贝（Shallow Copy）。由于 Map 的内容是不可变的，因此只需复制 Map 的结构，而不用复制它的内容，如程序清单 4-8 所示 （其中只返回一个 HashMap ，因为getLocations 并不 能保证返回一个线程安全的Map  ）。
+
+```java
+程序清单 4-8 返回locations 的静态拷贝而非实时拷贝
+public Map< String,Point> getLocations (){ 
+	return   Collections.unmodifiableMap (
+				new  HashMap<String,Point >(locat ions) ) ;
+}
+```
+
+
+
+### 4.3.2   独立的状态变量
+
+-----
+
+到目前为止，这些委托示例都仅仅委托给 了单个线程安全的状态变量。我们还可以将线程 安全性委托给多个状态变量 ，只要这些变量是彼此独立的，即**组合而成的类并不会在其包含的 多个状态变量上增加任何不变性条件** 。
+
+程序清单 4-9 中的 VisualComponent 是一个图形组件 ，允许客户程序注册监控鼠标和键盘 等事件的监听器 。它为每种类型的事件都备有 一个已注册监昕器列表，因此当某个事件发生 时，就会调用相应的监听器。然而，在鼠标事件监听器与键盘 事件监听器之间不存在任何关 联，二者是彼此独立的，因此VisualComponent 可以将其线程安全性委托给这两个线程安全的 监昕器列表。
+
+
+
+```java
+程序清单 4-9    将线程安全性委托给多个状态变量
+public class VisualComponent{
+	private final List<KeyListener> keyListeners 
+		=  new  CopyOnWriteArrayList<KeyListener>  ( ) ;
+	private final List<MouseListener> mouseListeners
+		=  new CopyOnWriteArrayList<MouseListener> ( )  ;	
+		
+        public void addKeyListener( KeyListener  listener) {
+        	keyListeners.add ( listener) ;	
+        }
+        
+        public void addMouseListener (MouseListener listener ) {
+        	mouseListeners.add ( listener) ;
+        }
+        public void  removeKeyListener (KeyListener  listener){
+        	keyListeners .remove ( listener) ;
+        } 
+        
+        public void removeMouseListener(MouseListener listener){
+       	 	mouseListeners.remove (listener) ;
+        }
+        
+}
+```
+
+
+
+VisualComponent使用 CopyOnWriteArrayList 来保存各个监听 器 列表。==**它是一个线程安全的链表，特别适用于管理监听器列表 （ 参见 5.2.3 节）。每个链表都是线程安全的**== ，此 外，由于各个状态之间不存在耦合关系 ，因此VisualComponent可以将它的钱程安全性委托给 mouseListeners   和 keyListeners 等对象。
+
+
+
+### 4.3.3    当委托失效时
+
+---
+
+大多数组合对象都不会像 VisualComponent 这样简单 ：在它们的状态变量之间存在着某些 不变性条件 。程序清单4-10 中的NumberRange 使用了两个 Atomiclnteger 来管理状态，并且含 有一个约束条件，即第一个数值要小于或等于第二个数值。
+
+ ```java
+程序清单 4-10    NumberRange 类并不足以保护它的不变性条件 （不要这么做）
+
+public  class NumberRange   {
+	//不变性条件 ：lower  < =  upper
+	private  final Atomicinteger  lower  =  new  Atomicinteger ( O ) ; 
+	private  final Atomicinteger  upper  =  new  Atomicinteger ( O ) ;
+	
+    public void setLower ( int  i)  {
+    	//注意一一不安全的 “先检查后执行”
+        if( i >  upper .get ( ) ){
+        	throw  new   IllegalArgumentException (
+                ”can ’ t set lower t	”  ＋ i ＋ ” ＞ upper ”）;
+        }
+         lower .set ( i) ;
+    }
+
+    public  void  setUpper ( int  i){
+		//注意 一一 不安全的 “允检查后执行”
+        if( i < lower .get ( ) ){
+        	throw  new  IllegalArgumentException (
+        	”can ' t set upper t	” ＋ i ＋ ” ＜ lower” ） ;
+        }
+		upper .set (i) ;
+    }
+    public  boolean isinRange ( int  i) {
+    	return  ( i >=  lower. get ( )   &&   i <=  upper .get () 
+    }
+}
+ ```
+
+
+
+**==NumberRange 不是线程安全的 ，没有维持对下界和上界进行约束的不变性条件==** 。setLower 和 setUpper等方法都尝试维持不变性条件 ，但却无法做到。s**==etLower 和 setUpper 都是 “先检查后执行” 的操作==**，**但它们没有使用足够的加锁机制来保证这些操作的 原子性**。假设取值范围为 (0,  10），如果一个线程调用 setLower(5)，而另一个线程调用 setUpper(4），那么在一些错误 的执行时序中，这两个调用都将通过检查 ，并且都能设置成功 。结果得到的取值范围就是(5，4)， 那么这是一个无效的状态。因此，==**虽然 Atomiclnteger 是线程安全的 ，但经过组合得到的类却 不 是。**==由于状态变量 lower 和 upper 不是彼此独立的 ，因此NumberRange 不能将线程安全性委托 给它的线程安全状态变量。
+
+NumberRange 可以通过**加锁机制来维护不变性条件以确保其线程安全性** ，例如使用一个锁 来保护 lower 和 upper 。此外，它还必须避免发布 lower 和 upper ，从而防止客户代码破坏其不变性条件 。
+
+如果某个类含有复合操作 ，例如Number Range，那么仅靠委托并不足以实现线程安全性 。 **在这种情况下 ，这个类必须提供自己的加锁机制 以保证这些==复合操作都是原子操作==** ，除非整个 复合操作都可以委托给状态变 量。
+
+> 如果一个类是由多个独立且线程安全的状态变量组成，并且在所有的操作中都不包含无效状态转换，那么可以将线程安全性委托给底层的状态变量
+
+
+
+即使 Number Range 的各个状态组成部分都是线程安全的，也不能确保 NumberRange 的线 程安全性 ，这种问题非常类似于 3.1.4 节介绍的volatile 变量规则 ：==仅当一个变量参与到包含其他状态、变量的不变性条件时，才可以声明为 volatile  类型。==？？？
+
+
+
+4.3.4    发布底层的状态变量
+
+---
+
+当把线程安全性委托给某个对象的底层状态变量时，<u>在什么条件下才可以发布这些变量从而使其他类能修改它们 ？答案仍然取决于在类中对这些变量施加了哪些不变性条件</u> 。虽然 Counter 中的value 域可以为任意整数值，但Counter 施加的约束条件是只能取正整数，此外**递 增操作同样约束了下一个状态的有效取值范围** 。如果将 value 声明为一个公有域，那么客户代 码可以将它修改为一个无效值，因此发布value  会导致这个类出错 。另一方面，如果某个变量 表示的是当前温度或者最近登录用户 的ID，那么即使另一个类在某个时刻修改了这个值 ，也不会破坏任何不变性条件 ，因此发布这个变量也是可以接受的 。（这或许不是个好主意 ，因为发 布可变的变量将对下一步的开发和 派生子类带来限制 ，但不会破坏类的线程安全性 。）
 
