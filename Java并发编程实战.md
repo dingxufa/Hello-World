@@ -1669,9 +1669,9 @@ public  class NumberRange   {
     	//注意一一不安全的 “先检查后执行”
         if( i >  upper .get ( ) ){
         	throw  new   IllegalArgumentException (
-                ”can ’ t set lower t	”  ＋ i ＋ ” ＞ upper ”）;
+                ”can’t set lower t	”  ＋ i ＋ ” ＞ upper ”）;
         }
-         lower .set ( i) ;
+         lower.set ( i) ;
     }
 
     public  void  setUpper ( int  i){
@@ -1680,7 +1680,7 @@ public  class NumberRange   {
         	throw  new  IllegalArgumentException (
         	”can ' t set upper t	” ＋ i ＋ ” ＜ lower” ） ;
         }
-		upper .set (i) ;
+		upper.set (i) ;
     }
     public  boolean isinRange ( int  i) {
     	return  ( i >=  lower. get ( )   &&   i <=  upper .get () 
@@ -1708,5 +1708,719 @@ NumberRange 可以通过**加锁机制来维护不变性条件以确保其线程
 
 ---
 
-当把线程安全性委托给某个对象的底层状态变量时，<u>在什么条件下才可以发布这些变量从而使其他类能修改它们 ？答案仍然取决于在类中对这些变量施加了哪些不变性条件</u> 。虽然 Counter 中的value 域可以为任意整数值，但Counter 施加的约束条件是只能取正整数，此外**递 增操作同样约束了下一个状态的有效取值范围** 。如果将 value 声明为一个公有域，那么客户代 码可以将它修改为一个无效值，因此发布value  会导致这个类出错 。另一方面，如果某个变量 表示的是当前温度或者最近登录用户 的ID，那么即使另一个类在某个时刻修改了这个值 ，也不会破坏任何不变性条件 ，因此发布这个变量也是可以接受的 。（这或许不是个好主意 ，因为发 布可变的变量将对下一步的开发和 派生子类带来限制 ，但不会破坏类的线程安全性 。）
+当把线程安全性委托给某个对象的底层状态变量时，<u>在什么条件下才可以发布这些变量从而使其他类能修改它们 ？答案仍然取决于在类中对这些变量施加了哪些不变性条件</u> 。虽然 Counter 中的value 域可以为任意整数值，但Counter 施加的**约束条件是只能取正整数**，此外**递增操作同样约束了下一个状态的有效取值范围** 。如果将 value 声明为一个公有域，那么客户代 码可以将它修改为一个无效值，因此发布value  会导致这个类出错 。另一方面，如果某个变量 表示的是当前温度或者最近登录用户的ID，那么即使另一个类在某个时刻修改了这个值 ，也不会破坏任何不变性条件 ，因此发布这个变量也是可以接受的 。（这或许不是个好主意 ，因为发 布可变的变量将对下一步的开发和 派生子类带来限制 ，但不会破坏类的线程安全性 。）
+
+>如果一个状态变量是线程安全的，并且没有任何不变性条件来约束它的值，在变量的操作上也不存在任何不允许的状态转换，那么就可以安全的发布这个变量。
+>
+>
+
+例如发布Visual Component 中的mouseListeners 或 keyListeners 等变量就是安全的 。由于 VisualComponent 并没有在其监听器链表的合法状态上施加任何约束 ，因此这些域可以声明 为公有域或者发布  ，而不会破坏线程安全性。
+
+### 4.3.5  示例 ：发布状态的车辆追踪器    
+
+------
+
+ 我们来构造车辆追踪器的另一个版本 ，井在这个版本中发布底层的可变状态  。我们需要修改接口以适应这种变化 ，即使用可变且线程安全的 Point 类。
+
+程序清单 4-11 中的 SafePoint 提供的 get 方陆同时获得 x 和 y 的值，并将二者放在一个数 组中返回@。
+
+>@   如果将拷贝构造函数实现为 this   (p.x   p.y），那么会产生竞态条件，而私有构造函数则可以避免这种竞态条件。这是私有构造函数捕获模式 （ Private Constructor Capture Idiom,Bloch and Gafter,2005 ） 的 ·个实例
+>
+>
+
+**如果为x 和 y 分别提供 get 方法，那么在获得这两个不同坐 标的操作之间，x 和 y 的值发生变化，从而导致调用者看到不 一致的值** ：车辆从来没有到达过位置 （x, y ）。通过使 用 SafePoint ，可以构造一个发布其底层可变状态的车辆追踪器 ，还能确保其线程安全性不被破 坏，如程序清单4-12  中的PublishingVehicleTracker  类所示。
+
+```java
+程序清单 4-11  线程安全且可变的Point 类
+
+/**
+ * SafePoint
+ */
+@ThreadSafe
+public class SafePoint {
+    @GuardedBy("this") private int x, y;
+
+    private SafePoint(int[] a) {
+        this(a[0], a[1]);
+    }
+
+    public SafePoint(SafePoint p) {
+        this(p.get());
+    }
+
+    public SafePoint(int x, int y) {
+        this.set(x, y);
+    }
+
+    public synchronized int[] get() {
+        return new int[]{x, y};
+    }
+
+    public synchronized void set(int x, int y) {
+        this.x = x;
+        this.y = y;
+    }
+}
+
+```
+
+
+
+```java
+程序清单 4-12  安全发布底层状态 的车辆追踪器
+package net.jcip.examples;
+
+import java.util.*;
+import java.util.concurrent.*;
+
+import net.jcip.annotations.*;
+
+/**
+ * PublishingVehicleTracker
+ * <p/>
+ * Vehicle tracker that safely publishes underlying state
+ *
+ * @author Brian Goetz and Tim Peierls
+ */
+@ThreadSafe
+public class PublishingVehicleTracker {
+    private final Map<String, SafePoint> locations;
+    private final Map<String, SafePoint> unmodifiableMap;
+
+    public PublishingVehicleTracker(Map<String, SafePoint> locations) {
+        this.locations = new ConcurrentHashMap<String, SafePoint>(locations);
+        this.unmodifiableMap = Collections.unmodifiableMap(this.locations);
+    }
+
+    public Map<String, SafePoint> getLocations() {
+        return unmodifiableMap;
+    }
+
+    public SafePoint getLocation(String id) {
+        return locations.get(id);
+    }
+
+    public void setLocation(String id, int x, int y) {
+        if (!locations.containsKey(id)){
+                throw new IllegalArgumentException("invalid vehicle name: " + id);
+        }
+        
+        locations.get(id).set(x, y);
+    }
+}
+
+```
+
+
+
+PublishingVehicleTracker将其线程安全性**委托给底层的 ConcurrentHashMap** ，只是 Map中的元素是线程安全的且可变的 Point ，而并非不可变的 。getLocation 方法返回底层 Map 对象的 一个**==不可变副本==** 。**调用者不能增加或删除车辆 ，但却可以通过修改返回 Map 中的SafePoint 值 来改变车辆的位置** 。再次指出，Map 的这种 “实时” 特性究竟是带来好处还是坏处 ，仍然取决 于实际的需求。**PublishingVehicleTracker 是线程安全的，但如果它在车辆位置的有效值上施加 了任何约束，那么就不再是线程安全的**  。如果需要对车辆位置的变化进行判断或者当位置变化 肘执行一些操作 ，那么PublishingVehicleTracker  中采用的方法并不合适 。
+
+ 
+
+## 4.4    在现有的线程安全类中添加功能
+
+----
+
+Java 类库包含许多有用的 “基础模块” 类 。通常 ，我们应该==优先选择重用这些现有的 类而不是创建新的类== ：重用能降低开发工作量、开发风险 （ 因为现有的类都已经通过测试） 以及维护成本。有时候   ，某个现有的钱程安全类能支持我们需要的所有操作，但更多时候， 现有的类只能支持大部分的操作 ，此时就需要在不破坏线程安全性的情况下添加一个新的 操作。
+
+例如，假设需要一个线程安全的链表 ，它需要提供一个原子的 “ 若没有则添加 （ Put -if - Absent ） ” 的操作。同步的 List 类已经实现了大部分的功能 ，我们可以根据它提供的 contains 方 法和 add 方陆来构造一个 “若没有则添加” 的操作。
+
+“若没有则添加” 的概念很简单 ，在向容器中添加元素前 ，首先检查该元素是否已经存在， 如果存在就不再添加 。（ 回想 “**==先检查再执行==**” 的注意事项。） **由于这个类必须是线程安全的** ， 因此就隐含地增加了另一个需求 ，即 “ 若没有则添加” 这个操作==必须是原子操作== 。这意味着 ， **如果在链表中没有包含对象 X ，那么在执行两次 “若没有则添加” X 后，在容器中只能包含一 个 X 对象 。**然而 ，如果 “若没有则添加” 操作**不是原子操作 ，那么在某些执行情况下 ，有两个 线程都将看到 X 不在容器中 ，并且都执行了添加 X  的操作，从而使容器中包含两个相同的 X 对象。**
+
+要添加一个新的原子操作 ，最安全的方法是==**修改原始 的类，但这通常无怯做到**== ，因为你可能无怯访问或修改类的源代码 。要想修改原始的类 ，就需要理解代码中的同步策略 ，这样增加 的功能才能与原有的设计保持一致 。如果直接将新方法添加到类中 ，那么意味着实现同步策略 的所有代码仍然处于一个源代码文件中 ，从而更容易理解与维护 。
+
+**==另一种方法是扩展这个类==** ，假定在设计这个类时考虑了可扩展性 。程序清单 4-13 中的 BetterVector 对 Vector 进行了扩展 ，井添加了一个新方法 putlfAbsent 。扩展 Vector 很简单 ，但 并非所有的类都像 Vector 那样将状态向子类公开 ，因此也就不适合采用这种方法 。
+
+```java
+程序清单 4-13  扩展 Vector 并增加一个 “若没有则添加” 方法
+package net.jcip.examples;
+
+import java.util.*;
+
+import net.jcip.annotations.*;
+
+/**
+ * BetterVector
+ * <p/>
+ * Extending Vector to have a put-if-absent method
+ *
+ * @author Brian Goetz and Tim Peierls
+ */
+@ThreadSafe
+public class BetterVector <E> extends Vector<E> {
+    // When extending a serializable class, you should redefine serialVersionUID
+    static final long serialVersionUID = -3963416950630760754L;
+
+    public synchronized boolean putIfAbsent(E x) {
+        boolean absent = !contains(x);
+        if (absent){
+            add(x);   
+        }
+        return absent;
+    }
+}
+
+```
+
+
+
+“扩展” 方怯比直接将代码添加到类中**==更加脆弱==** ，因为**==现在的同步策略实现被分布到多个单独维护的源代码文件中==** 。如果底层的类改变了同步策略并选择了不同的锁来保护它 的状态变 量 ，**那么子类会被破坏 ，因为在同步策略改变后它无法再使用正确的锁来控制对基类状态的并发访问。**（在 Vector 的规范中定义了它的同步策略，因此 BetterVector 不存在这个问题。）
+
+
+
+### 4.4.1     客户端加锁机制
+
+----
+
+对于由 Collections.synchronizedList 封装的 ArrayList ，这两种方陆在原始类**==中添加一个方法或者对类进行扩展都行不通==** ，因为客户代码并不知道在同步封装器工厂方住中返回的 List 对 象的类型 。**==第三种策略是扩展类 的功能，但井不是扩展类本身 ，而是将扩展代码放入一个 “辅 助类” 中。==**
+
+
+
+程序清单 4-14 实现了一个包含 “若没有则添加” 操作的辅助类 ，用于对线程安全的 List 执行操作，但其中的代码是错误的 。
+
+```java
+程序清单 4-14   非线程安全的 “若没有则添加” （不要这么做）
+package net.jcip.examples;
+
+import java.util.*;
+
+import net.jcip.annotations.*;
+
+/**
+ * ListHelder
+ * <p/>
+ * Examples of thread-safe and non-thread-safe implementations of
+ * put-if-absent helper methods for List
+ *
+ * @author Brian Goetz and Tim Peierls
+ */
+
+@NotThreadSafe
+class BadListHelper <E> {
+    public List<E> list = Collections.synchronizedList(new ArrayList<E>());
+
+    public synchronized boolean putIfAbsent(E x) {
+        boolean absent = !list.contains(x);
+        if (absent)
+            list.add(x);
+        return absent;
+    }
+}
+
+@ThreadSafe
+class GoodListHelper <E> {
+    public List<E> list = Collections.synchronizedList(new ArrayList<E>());
+
+    public boolean putIfAbsent(E x) {
+        synchronized (list) {
+            boolean absent = !list.contains(x);
+            if (absent)
+                list.add(x);
+            return absent;
+        }
+    }
+}
+
+```
+
+
+
+ **==为什么这种方式不能实现线程安全性==** ？毕竟，putlfAbsent  已经声明为 synchronized  类型的变量 ，对不对？==**问题在于在错误的锁上进行了同步。**==**无论 List 使用哪一个锁来保护它 的状态， 可以确定的是，这个锁并不是 ListHelper 上的锁** 。ListHelper只是带来了同步的假象，尽管所有的链表操作都被声明为synchronized ，**==但却使用了不同的锁==** ，这意味着**putlfAbsent 相对于 List  的其他操作来说并不是原子的** ，因此就无法确保putlfAbsent 执行时另一个钱程不会修改链表。
+
+要想使这个方法能正确执行 ，**必须使 List 在实现客户端加锁或外部加锁时使用同一个锁**。 客户端加锁是指，对于使用某个对象 X 的客户端代码 ，使用 X 本身用于保护其状态的锁来保护这段客户代码 。要使用客户端加锁 ，你必须知道对象 X 使用的是哪一个锁。
+
+在 Vector 和同步封装器类的文档中指出 ，它们通过使用Vector 或封装器容器的内置锁来支持客户端加锁 。程序清单午15 给出了在线程安全的 List 上执行 putlfAbsent 操作，其中使用了 正确的客户端加锁。
+
+```java
+程序清单 4-15 通过害户端加锁来实现 “若没有则添加”
+@ThreadSafe
+class GoodListHelper <E> {
+    public List<E> list = Collections.synchronizedList(new ArrayList<E>());
+
+    public boolean putIfAbsent(E x) {
+        synchronized (list) {
+            boolean absent = !list.contains(x);
+            if (absent)
+                list.add(x);
+            return absent;
+        }
+    }
+}
+
+```
+
+**==通过添加一个原子操作来扩展类是脆弱的，因为它将类的加锁代码分布到多个类中 。然而，客户端加锁却更加脆弱，==**因为它将类 C 的加锁代码放到与 C 完全无关的其他类中 。当在那些并不承诺遵循加锁策略的类上使用客户端加锁时，要特别小心。
+
+**客户端加锁机制与扩展类机制有许多共同点，二者都是将派生类的行为与基类的实现辑合在一起**。正如扩展会破坏实现的封装性 ［EJ  Item   14］ ，客户端加锁同样会破坏同步策略的封装性。
+
+### 4.4.2   组合
+
+---
+
+**==当为现有的类添加一个原子操作时 ，有一种更好的方法：组合(Composition)==** 。程序清单 4-16 中的ImprovedList 通过将 List 对象的操作委托给底层的 List 实例来实现 List 的操作，同时还添加了一个原子的putlfAbsent方法。（与Collections .synchronizedList  和其他容器封装器一 样，ImprovedList假设把某个链表对象传给构造函数 以后，客户代码不会再直接使用这个对 象， 而只能通过 ImprovedList来访问它。）
+
+```java
+程序清单 4-16 通过组合实现 “若没有则添加”
+package net.jcip.examples;
+
+import java.util.*;
+
+import net.jcip.annotations.*;
+
+/**
+ * ImprovedList
+ *
+ * Implementing put-if-absent using composition
+ *
+ * @author Brian Goetz and Tim Peierls
+ */
+@ThreadSafe
+public class ImprovedList<T> implements List<T> {
+    private final List<T> list;
+
+    /**
+     * PRE: list argument is thread-safe.
+     */
+    public ImprovedList(List<T> list) { this.list = list; }
+
+    public synchronized boolean putIfAbsent(T x) {
+        boolean contains = list.contains(x);
+        if (contains)
+            list.add(x);
+        return !contains;
+    }
+
+    // Plain vanilla delegation for List methods.
+    // Mutative methods must be synchronized to ensure atomicity of putIfAbsent.
+    //按照类似的方法委托List的其他方法
+    public int size() {
+        return list.size();
+    }
+
+    public boolean isEmpty() {
+        return list.isEmpty();
+    }
+
+    public boolean contains(Object o) {
+        return list.contains(o);
+    }
+
+    public Iterator<T> iterator() {
+        return list.iterator();
+    }
+
+    public Object[] toArray() {
+        return list.toArray();
+    }
+
+    public <T> T[] toArray(T[] a) {
+        return list.toArray(a);
+    }
+
+    public synchronized boolean add(T e) {
+        return list.add(e);
+    }
+
+    public synchronized boolean remove(Object o) {
+        return list.remove(o);
+    }
+
+    public boolean containsAll(Collection<?> c) {
+        return list.containsAll(c);
+    }
+
+    public synchronized boolean addAll(Collection<? extends T> c) {
+        return list.addAll(c);
+    }
+
+    public synchronized boolean addAll(int index, Collection<? extends T> c) {
+        return list.addAll(index, c);
+    }
+
+    public synchronized boolean removeAll(Collection<?> c) {
+        return list.removeAll(c);
+    }
+
+    public synchronized boolean retainAll(Collection<?> c) {
+        return list.retainAll(c);
+    }
+
+    public boolean equals(Object o) {
+        return list.equals(o);
+    }
+
+    public int hashCode() {
+        return list.hashCode();
+    }
+
+    public T get(int index) {
+        return list.get(index);
+    }
+
+    public T set(int index, T element) {
+        return list.set(index, element);
+    }
+
+    public void add(int index, T element) {
+        list.add(index, element);
+    }
+
+    public T remove(int index) {
+        return list.remove(index);
+    }
+
+    public int indexOf(Object o) {
+        return list.indexOf(o);
+    }
+
+    public int lastIndexOf(Object o) {
+        return list.lastIndexOf(o);
+    }
+
+    public ListIterator<T> listIterator() {
+        return list.listIterator();
+    }
+
+    public ListIterator<T> listIterator(int index) {
+        return list.listIterator(index);
+    }
+
+    public List<T> subList(int fromIndex, int toIndex) {
+        return list.subList(fromIndex, toIndex);
+    }
+
+    public synchronized void clear() { list.clear(); }
+}
+
+```
+
+**==ImprovedList 通过自身的内置锁增加了一层额外的加锁==**。**它并不关心底层的 List 是否是线 程安全的** ，即使 List 不是线程安全的或者修改了它的加锁实现 ，ImprovedList 也会提供一致的 加锁机制来实现线程安全性 。虽然额外的同步层可能导致轻微的性能损失θ，但与模拟另一个 对象的加锁策略相 比，lmprovedList 更为健壮 。事实上，我们使用了 Java 监视器模式来封装现 有的 List，井且只要在类中拥有指 向底层 List 的唯一外部引用，就能确保结程安全性 。
+
+ >θ 全能损失很小，因为在底层List  k的同步不存在竞争，所以速度很快 ，请参见第11章
+ >
+ >
+
+## 4.5     将同步策略文档化
+
+在维护线程安全性时，文档是最强大的 （同时也是最未被充分利用的） 工具之一。用户可以通过查阅文档来判断某个类是 否是线程安全的 ，而维护人员也可以通过查阅文档来理解其中的实现策略，避免在维护过程中破坏安全性 。然而 ，通常人们从文档中获取的信息却是少 之又少。
+
+>在文档中说明客户代码需要了 解的线程安全性保证，以及代码给护人员需了解的同步策略
+>
+>
+
+synchronized 、volatile 或者任何一个线程安全类都对应于某种同步策略 ，用于在并发访问 时确保数据的完整性。这种策略是程序设计的要素之一，因此应该将其文档化 。当然，设计阶 段是编写设计决策文档的最佳时间 。这之后的几周或几个月后，一些设计细节会逐渐变得模 糊，因此一定要在忘记之前将它们记录下来 。
+
+在设计同步策略时需要考虑多个方面 ，例如，**==将哪些变量声明为 volatile 类型，哪些变量用锁来保护 ，哪些锁保护哪些变量，哪些变量必须是不可变的或者被封闭在线程中的 ，哪些操 作必须是原子操作等==** 。其中某些方面是严格的实现细节 ，应该将它们文档化 以便于日后的维护。还有一些方面会影响类中加锁行为的 外在表现，也应该将其作为规范 的一部分写入文档 。
+
+最起码，应该保证将类中 的线程安全性文档化 。它是否是线程安全的？在执行回调时是否持有一个锁 ？是否有某些特定的锁会影响其行为 ？不要让客户冒着风险去猜测 。如果你不想支持客户端加锁也是可以的，但定要明确地指出来 。如果你希望客户代码能够在类中添加新的原子操作 ，如 4.4 节所示 ，那么就需要在文档中说明需要获得哪些锁才能实现安全的 原子操 作。如果使用锁来保护状态 ，那么也要将其写入文档 以便日后维护 ，这很简单 ，只需使用标注@GuardedBy 即可。如果要使用更复杂 的方站来维护线程安全性，那么一定要将它们 写入文档 ， 因为维护者通常很难发现它们 。
+
+甚至在平台的类库中，线程安全性穷面的文档也是很难令人满意。当你阅读某个类的 Javadoc 时，是否曾怀疑过它是否是线 程安全的？θ   大多数类都没有给出任何提示  。许多正式的 Java  技术规范 ，例如 Servlet 和 JDBC ，也没有在它们的文档中给出线程安全性 的保证和需求。 尽管我们不应该对规范之外的行为进行猜测，但有时候出于工作需要，将不得不面对各种 糟糕的假设。我们是否应该因为某个对象看上去是线程安全的而就假设它是安全的？是否可以 假设通过获取对象的锁来确保对象访问的钱程安全性 ？ （只有当我们能控制所有访 问该对象的 代码时，才能使用这种带风险的技术 ，否则，这只能带来线程安全性的假象 。）无论做出哪种选择都难以令人满意。
+
+更糟糕的是，我们的直觉通常是错误的 ：我们认为“可能是线程安全“的类通常并不是线 程安全的。例如，java. **==text.SimpleDateFormat 并不是线程安全的==**，但JDK 1.4 之前的Javadoc并没有提到这点 。许多开发人员都对这个类不是线程安全的而感到惊讶。有多少程序已经错误地 生成了这种非线程安全的对象，并在多线程中使用它？这些程序没有意识到这将在高负载的情 况下导致错误的结果。
+
+如果某个类没有明确地 声明是线程安全的，那么就不要假设它是线程安全的，从而有效地避免类似于 SimpleDateFormat 的问题。而 另一方面，如果不对容器提供对象 （ 例如 HttpSession） 的线程安全性做某种有问题的假设，也就不可能开发出一个基于 Servlet 的应用程 序。不要使你的客户或同事也做这样的猜测。
+
+
+
+解释含糊的文档
+
+   许 多 Java 技 术 规 范 都 没 有 （ 或 者 至 少不 愿意 ） 说明接 口的 线程 安 全性，**例 如 ServletContext 、HttpSession 或 Data Source @**。这些接口是由容器或数据库供应商来实现的，而你通常无怯通过查看其实现代码来了解细节功能 。此外，你也不希望依赖于某个特定JDBC 驱 动的实现细节一一你希望遵从标准，这样代码可以基于任何一个 JDBC 驱动工作 。但在 JDBC的规范中从未出现 “线程” 和 “并发” 这些术语 ，同样在 Servlet 规范中也很少提到 。那么你该 做些什么呢？
+
+你只能去猜测。一个提高猜测准确性的方法是，**从实现者 （例如容器或数据库的供应商） 的角度去解释规范，而不是从使用者的角度去解释** 。Servlet 通常是在容器管理的 （ Container­ Managed ） 线程中调用的，因此可以安全地假设 ：如果有多个这种线程在运行，那么容器是 知道这种情况的 。**Servlet 容器能生成一些为多个  Servlet  提供服务的对象 ，例如 HttpSession 或 ServletContext** 。因此，Servlet 容器应该预见到这些对象将被并发访问 ，因为它创建了多 个线程 ，井且从这些线程中调用像  Servlet.service   这样的方法 ，而这个方在是很可能会访问ServletContext "
+
+由于这些对象在单线程的上下文中很少是有用的，因此我们不得不假设它们已被实现为线 程安全的，即使在规范中没有明确地说明。此外，如果它们需要客户端加锁 ，那么客户端代码 **应该在哪个锁上进行同步**？在文档中没有说明这一点，而要猜测的话也不知从何猜起 。在规范和正式手册中给出的如何访问ServletContext 或 HttpSession 的示例中进一步强调了这种 “合理 的假设”，并且没有使用任何客户端 同步。
+
+另一方面，通过把 setAttribute 放到 ServletContext 中或者将 HttpSession 的对象由 Web 应用程序拥有，而不是Servlet容器拥有 。**在 Serviet 规范中没有给出任何机制来协调对这些共 享属性的并发访问**。因此，由容器代替 Web 应用程序来保存这些属性应该是线程安全的 ，或 者是不可变的 。如果容器 的工作只是代替 Web 应用程序来保存这些属性，那么当从 servlet应用程序代码访问它们时，应该确保它们始终由同一个锁保护。但由于容器可能需要序列化 HttpSession 中的对象以实现复制或钝化等操作 ，并且容器不可能知道你的加锁协议 ，因此你要 自己确保这些对象是线程安全的。
+
+可以对 JDBC DataSource 接口做出类似的推断，该接口表示一个可重用的数据库连接池。DataSource 为应用程序提供服务，它在单线程应用程序中没有太大意义。**==我们很难想象不在多线程情况下使用getConnection==** 。并且，与Servlet 一样，在使用 DataSource 的许多示例代码中，JDBC 规范并没有说明需要使用任何客户端加锁。因此，尽管JDBC 规范没有说明 DataSource 是否是线程安全的，或者要求生产商提供线程安全的实现，但同样由于
+“如果不这么做将是不可思议的， 所以我们只能假设 DataSource.getConnection 不需要额外的客户端 加锁。
+
+另一方面 ，在 DataSource 分配 JDBC Connection 对象上没有这样的争议，因为在它们返回连接池之前 ，不会有其他操作将它们共享。因此，如果某个获取JDBC Connection 对象的操作 跨越了多个线程 ，那么它必须通过同步来保护对 Connection 对象的访问 。（大多数应用程序 在实现使用 JDBC Connection 对象的操作时，通常都会把Connection 对象封闭在某个特定的线程中。）
+
+  
+
+# 第5章 构建基础模块
+
+第 4 章介绍了构造线程安全类时采用的一些技术 ，**==例如将线程安全性委托给现有的线程安全类 。委托是创建线程安全类的一个最有效的策略  ：只需让现有的线程安全类管理所有的状态 即可。==**
+
+Java 平台类库包含了丰富的并发基 础构建模块 ，例如线程安全的容器类 以及各种用于协调 多个相互协作的结程控制流的同步工具类 （ Synchronizer ） 。本章将介绍其中一些最有用的并发 构建模块 ，特别是在 Java 5.0 和 Java 6 中51入的一些新模块 ，以及在使用这些模块来构造井发 应用程序时的一些常用模式。 
+
+
+
+## 5.1  同步容器类
+
+**==同步容器类包括 Vector 和 Hashtable==** ，二者是早期JDK 的一部分，此外还包括在 JDK  1,2 中添加的一些功能相似的类，这些同步的封装器类是由 Collections .synchronizedXxx  等工厂方法创建的。这些类实现线程安全的方式是 ：**==将它们的状态封装起来 ，并对每个公有方法都进行同步，使得每次只有一个线程能访问容器的状态。==**
+
+### 5.1.1 同步容器类的问题
+
+**==同步容器类都是线程安全的==** ，但在某些情况下可能需要**==额外的客户端加锁来保护复合操作==**。容器上常见的复合操作包括  ：**迭代（ 反复访问元素，直到遍历完容器中所有元素 ）、跳转（根据指定顺序找到当前元素的下一个元素） 以及条件运算，例如 “若没有则添加 ” （检查在 Map   中是否存在键值 K，如果没有，就加入二元组（k,v），V））。**在同步容器类中 ，这些复合操作在 没有客户端加锁的情况下仍然是线程安全的，但当其他线程并发地修改容器时，它们可能会表现出意料之外的行为。
+
+程序清单 5-l 结出了在 Vector 中定义的两个方怯 ：getLast 和 deleteLast ，它们都会执行 “先检查再运行” 操作。每个方法首先都获得数组的大小 ，然后通过结果来获取或删除最后 一 个元素 。
+
+```java
+程序清单 5-1  Vector 上可能导致混乱结果的复合操作
+public static Object getLast (Vector list){
+	int  lastIndex  =  list.size () - 1;
+	return list.get(lastIndex) ;
+}
+public static void deleteLast (Vector list ){
+	int  lastIndex  =  list.size () - 1;
+	list.remove(lastindex) ;
+} 
+```
+
+
+
+这些方怯看似没有任何 问题，从某种程度上来看也确实如此一一无论多少个线程同时调用 它们，也不破坏 Vector 。但从这些方法的调用者角度来看，情况就不同了 。如果线程A 在包含10 个元素的 Vector 上调用 getLast ，同时线程B 在同一个 Vector 上调用 deleteLast ，这些操作 的交替执行如图5-1 所示，getLast 将抛出 ArrayIndexOutOfBoundsException异常。**在调用size与调用 getLast 这两个操作之间 ，Vector 变小了，因此在调用size 时得到的索引值将不再有效** 。 这种情况很好地遵循了 Vector 的规范一一如果请求一个不存在的元素 ，那么将抛出一个异常 。 但这并不是 getLast的调用者所希望得到的结果 （即使在并发修改的情况下也不希望看到） ，除 非 Vector 从一开始就是空的
+
+![img](picture/java并发编程实战/clip_image002.jpg)
+
+图 5-1    交替调用 getLast 和 deleteLast 时将抛出 ArraylndexOutOfBoundsException
+
+由于同步容器类要遵守同步策略 ，即支持客户端加锁 ，因此可能会创建一些新的操作，只要我们知道应该使用哪一个锁，那么这些新操作就与容器的其他操作一样都是原子操作 。**==同 步容器类通过其自身的锁来保护它的每个方法 。通过获得容器类的锁 ，我们可以使 getLast 和 deleteLast 成为原子操作 ，并确保 Vector的大小在调用 size 和 get 之间不会安生变化==** ，如程序 清单 5-2 所示。
+
+```java
+程序清单 5-2   在使用客户端加锁的Vector 上的复合操作
+public static Object getLast (Vector list){
+    synchronized(this){
+    	int  lastIndex  =  list.size () - 1;
+		return list.get(lastIndex) ;
+    }
+}
+public static void deleteLast (Vector list ){
+    synchronized(this){
+    	int  lastIndex  =  list.size () - 1;
+		list.remove(lastindex) ;
+    }
+} 
+```
+
+在调用 size 和相应的 get 之间 ，Vector 的长度可能会发生变化 ，这种风险在对 Vector 中的 元素进行迭代时仍然会出现 ，如程序清单 5-3 所示。
+
+```java
+程序清单 5-3   可能抛出 ArraylndexOutOfBoundsException  的迭代操作
+for( int  i =  O ;  i <  vector.size () ;  i++ ) {
+	doSomething ( vector.get ( i) ) ;
+}
+```
+
+ 
+
+这种迭代操作的正确性要依赖于运气 ，**==即在调用 size 和 get 之间没有线程会修改 Vector==** 。 在单线程环境中 ，这种假设完全成立 ，但在有其他线程并发地修改 Vector 时，则可能导致麻 烦。与 getLast 一样，如果在对 Vector 进行迭代时 ，另一小线程删除了一个元素 ，并且这两个 操作交替执行 ，那么这种迭代方法将抛出 ArraylndexOutOtBoundsException 异常。
+
+虽然在程序清单 5-3 的迭代操作中可能抛出异常 ，但并不意味着 Vector 就不是线程安全 的。Vector 的状态仍然是有效的 ，而抛出的异常也与其规范保持一致 。然而，像在读取最后一 个元素或者迭代等这样的简单操作中抛出异常显然不是人们所期望的 。
+
+**==我们可以通过在客户端加锁来解决不可靠迭代的 问题，但要牺性一些伸缩性==** 。通过在迭代 期间持有 Vector 的锁，可以防止其他线程在迭代期间修改 Vector ，如程序清单 5-4 所示 。然而 ， 这同样会导致其他线程在迭代期间无怯访问它 ，因此降低了并发性 。
+
+```java
+程序清单 5-4   带有客户端加锁的迭代
+synchronized(vector ) {
+    for( int  i =  O ;  i <  vector.size () ;  i++ ) {
+        doSomething ( vector.get ( i) ) ;
+    }
+} ；
+
+```
+
+
+
+5.1.2  迭代器与 Concu rrentModificationException
+
+为了将问题阐述清楚 ，我们使用了 Vector ，虽然这是 一个 “ 古老” 的容器类。然而 ，**==许 多 “ 现代” 的容器类也并没有消除复合操作中的问题==** 。无论在直接迭代还是在 Java 5.0  引 入的 for-each 循环语法中 ，对容器 类进行迭代的标准方式都是使用 Iterator 。然而，**如果有其他线程并发地修改容器 ，那么即使是使用迭代器也无战避免在迭代期间对容器加锁** 。在 ==设计同步容器 类的迭代器时并没有考虑到并发修改的问题 ，并且它们表现出的行为是 “ 及时失败”==（ fail-fast ） 的。这意味着 ，当它们发现容器在迭代过程中被修改时 ，就会抛出一个 ConcurrentModificationException 异常。
+
+这种 “ 及时失 败 ” 的迭代 器 并不是一 种完 备的处理 机制，而只是 “ 善意地 ” 捕获 并发 错误 ，因此只能作为
+并 发问题的预警指示器 。**==它们 采 用的实现方式是 ，将 计数 器 的变化与容 器 关 联起来 ：如果 在 迭 代 期 间计数 器 被修 改，那 么 hasNext 或 next 将抛出 ConcurrentModificationException==** 。然而 ，**这种检查是在没有同步的情况下进行的 ，因此可 能会看到失效的计数值 ，而迭代器可能并没有意识到已经发生了修改**   。这是一种设计上的权衡 ，从而降低并发修改操作的检测代码 ＠对程序性能带来的影响。
+
+>＠ 在单线程代码中也可能抛出 ConcurrentModificationException 异常。当对象直接从容器中删除而不是通过Iterator.remove 来删除肘 ，就会抛出这个异常。
+
+
+
+程序清单 5-5 说明了如何使用 for-each 循环语陆对 List 容器进行选代 。从内部来看 ，javac 将生成使用 Iterator 的代码，反复调用 hasNext 和 next 来迭代 List 对象。与迭代 Vector 一样， 要想避免出现 ConcurrentModificationException     ，就必须在迭代过程持有容器的锁。
+
+```java
+程序清单 5-5  通过 Iterator 来迭代 List 
+List<Widget> widgetList
+		=  Collections.synchronizedList (new ArrayList <Widget > ( ) ) ;
+//可能抛出 ConcurrentModificationException 
+for(Widget w  : widgetList){
+    doSomething (w) ;
+}
+```
+
+
+
+然而 ，**==有时候开发人员并不希望在迭代期间对容器加锁==** 。例如，某些线程在可以访问容 器之前 ，必须等待迭代过程结束 ，如果容器的规模很大，或者在每个元素上执行操作的时间 很长，那么这些线程将长时间等待 。同样，如果容器像程序清单5-4   中那样加锁，那么在调用 doSomething 时将持有一个锁，这可能会产生死锁 （请参见第 10 章〉。即使不存在饥饿或者死 锁等风险 ，长时间地对容器加锁也会降低程序的 可伸缩性。持有锁的时间越长，那么在锁上的 竞争就可能越激烈 ，如果许多线程都在等待锁被释放 ，那么将极大地降低吞吐量和 CPU  的利用 率 （请参见第 11 章〉。
+
+**==如果不希望在迭代期间对容器加锁 ，那么一种替代方怯就是  “克隆” 容器，井在副本上进 行迭代==** 。由于副本被封闭在线程内 ，因此其他线程不会在选代期间对其进行修改  ，这样就避免 了抛出 ConcurrentModificationException    （ 在克隆过程中仍然需要对容器加锁） 。**==在克隆容器时 存在显著的性能开销==**。这种方式的好坏取决于多个因素  ，包括容器的大小  ，在每个元素上执行 的工作，迭代操作相对于容器其他操作 的调用频率 ，以及在响应时间和吞吐量等方面的需求。
+
+
+
+### 5.1.3   隐藏迭代器
+
+**==虽然加锁可以防止迭代器抛出 ConcurrentModificationException   ，但你必须要记住在所有对共享容器进行选代的地方都 需要加锁==**。实际情况要更加复杂 ，**==因为在某些情况下，迭代器会隐 藏起来==**，如程序清单5-6  中的 Hiddenlterator  所示。在Hiddenlterator   中没有显式的迭代操作， 但在**粗体标出的代码中将执行迭代操作** 。编译器将字符串的连接操作转换为调用  StringBuilder. append(Object），而这个方怯又会调用容器的 toString 方棒，标准容器的toString 方法将迭代容 器，并在每个元素上调用toString  来生成容器内容的格式化表示。
+
+```java
+package net.jcip.examples;
+
+import java.util.*;
+
+import net.jcip.annotations.*;
+
+/**
+ * HiddenIterator
+ * <p/>
+ * Iteration hidden within string concatenation
+ *
+ * @author Brian Goetz and Tim Peierls
+ */
+public class HiddenIterator {
+    @GuardedBy("this") private final Set<Integer> set = new HashSet<Integer>();
+
+    public synchronized void add(Integer i) {
+        set.add(i);
+    }
+
+    public synchronized void remove(Integer i) {
+        set.remove(i);
+    }
+
+    public void addTenThings() {
+        Random r = new Random();
+        for (int i = 0; i < 10; i++){
+             add(r.nextInt());           
+        }
+        System.out.println("DEBUG: added ten elements to " + set);// 粗体代码
+    }
+}
+
+```
+
+**System.out.println("DEBUG: added ten elements to " + set);**
+
+
+
+addTenThings 方住可能会抛出 ConcurrentModificationException ，因为在生成调试消息的 过程中 ，**toString 对容器进行迭代 。**当然，真正的问题在于 **Hiddenlteracor 不是线程安全的** 。==在 使用 println 中的 set 之前必须首先获取 Hiddenlterator 的锁，但在调试代码和日志代码中通常会 忽视这个要求 。==
+
+这里得到的教训是 ，如果状态与保护它的同步代码之间相隔越远 ，那么开发人员就越容 易忘记在访问状态时使用正确 的同步。==**如果 Hiddenlterator 用 synchronizedSet 来包装 HashSet, 并且对同步代码进行封装 ，那么就不会发生这种错误 。**==
+
+> 正如封装对象的状态有助于维持不变性条件一样， 封装对象的同步机制用样有助于 确保实施同步策略。
+
+**容器的 hashCode 和 equals 等方法也会间接地执行迭代操作 ，当容器作为另一个容器 的元素或键值时，就会出现这种情况。同样，containsAll, reinoveAll 和 retainAll 等方法，以及把 容器作为参数的构造函数 ，都会对容器进行迭代 。所有这些间接 的迭代操作都可能抛出 ConcurrentModificationException **
+
+
+
+## 5.2    并发容器
+
+Java 5.0 提供了多种并发容器类来改进同步容器 的性能。**同步容器将所有对容器状态的访 问都串行化 ，以实现它们的线程安全性 。这种方蓓的代价是严重降低井发性，当多个钱程竞争 容器的锁肘 ，吞吐量将严重减低。**
+
+**==另一方面，并发容器是针对多个钱程井发访问设计的 。在 Java 5.0 中增加了 Concurrent­ HashMap ，用来替代同步且基散列的Map ，以及 CopyOnWriteArrayList ，用于在遍历操作为主要操作的情况下代替同步的List。 在新的 ConcurrentMap 接口中增加了对一些常见复合操作 的支持，例如“若没有则添加”、替换以及有条件删除等。==**
+
+> 通过并发容器来代替同步容器 可以极大地提高伸缩性并降低风险。
+
+ 
+
+Java 5.0 增加了两种新的容器类型 ：Queue 和 BlockingQueue 。
+
+Queue 用来临时保存一组等 待处理的元素。它提供了几种实现 ，包括 ：**ConcurrentLinkedQueue   ，这是一个传统的先进先出 队列，以及PriorityQueue ，这是一个（非并发的〉 优先队列**。Queue 上的操作**不会阻塞** ，**如果 队列为空，那么获取元素的操作将返回空值** 。虽然可以用 List 来模拟 Queue 的行为一一事实 上，正是通过==LinkedList 来实现 Queue 的==，但还需要一个 Queue 的类**，因为它能去掉 List 的随 机访问需求，从而实现更高效的并发 。**
+
+BlockingQueue 扩展了 Queue ，**==增加了可阻塞的插入和获取等操作==** 。**==如果队列为空 ，那么 获取元素的操作将一直阻塞 ，直到队列中出现一个可用的元素。如果队列已满 （对于有界队列 来说〉，那么插入元素的操作将一直阻 塞，直到队列中出现可用的空间。==**在“生产者 一 消费者” 这种设计模式中 ，阻塞队列是非常有用的，5.3 节将会详细介绍 。
+
+**正如 ConcurrentHashMap 用于代替基于散列的同步 Map, Java 6 也引入了 Concurrent­SkipListMap 和 ConcurrentSkipListSet ，分别作为同步的SortedMap 和 SortedSet 的井发替代品（例如用 synchronizedMap 包装的 TreeMap 或 TreeSet ）。**
+
+
+
+### 5.2.1     ConcurrentHashMap
+
+**==同步容器类在执行每个操作期间都持有一个锁==** 。在一些操作中 ，例如 HashMap.get 或 List. contains   ，可能包含大量的工作 ：当遍历散列桶或链表来查找某个特定的对象时，必须在许多元 素上调用 equals （而 equals 本身还包含一定的计算量）。在基于散列的容器中 ，如果hash Code 不能很均匀地分布散列值 ，那么容器中的元素就不会均匀地分布在整个容器中  。某些情况下 ， 某个糟糕的散列函数还会把一个散列表变成线性链表  。当遍历很长的链表并且在某些或者全部 元素上调用 equals  方法时，会花费很长的时间，**而其他线程在这段时 间内都不能访问该容器 。**
+
+与 HashMap 一样，**==ConcurrentHashMap 也是一个基于散列的Map==**，但它使用了一种完全不同的加锁策略来提供更高的并发性和伸缩性 。**==ConcurrentHashMap  井不是将每个方法都在同 一 个锁上同步并使得每次只能有一个 钱程访问容器 ，而是使用一种粒度更细的加锁机制来实现更大程度的共享 ，这种机制称为分段锁==** （ Lock Striping ，请参见 11.4.3 节）。 在这种机制中 ，**==任意数量的读取钱程可以并发地访问 Map==** ，**==执行读取操作的线程和执行写入操作的线程可以并发地 访问 Map==** ，**==并且一定数量的写入线程可以井发地修改 Map==** 。ConcurrentHashMap  带来的结果是， 在并发访问环境下将实现更高的吞吐量  ，而在单线程环境中只损失非常小的性能。
+
+ConcurrentHashMap 与其他并井发容器一起增强了 同步容器类 ：**它们提供的选代器不会抛出 ConcurrentModificationException ，因此不需要在迭代过程中对容器加锁** 。ConcurrentHashMap **==返回的迭代器具有弱一致性==**（ Weakly Consistent ），而并非“及时失败“。 弱一致性的迭代器可以容忍并发的修改 ，当创建选代器时会遍历已有的元素，并可以 （但是不保证） 在迭代器被构造后将修改操作反映给容器。
+
+尽管有这些改进 ，但仍然有一些需要权衡的因素**。对于一些需要在整个 Map 上进行计算的方法** ，例如 size 和 isEmpty，这些方法的语义被略微减弱了以反映容器的并发特性。由于size 返回的结果在**计算时可能已经过期了** ，它实际上只是一个估计值 ，因此允许 size 返回一个**近似值而不是一个精确值** 。虽然这看上去有些令人不安 ，但<u>**事实上size 和 isEmpty 这样的方法在并发环境下的用处很小，因为它们的返回值总在不断变化**</u>。因此，这些操作的需求被弱化了 ，以 换取对其他更重要操作的性能优化，包括get、put 、containsKey  和 remove  等。
+
+**==在ConcurrentHashMap 中没有实现对 Map 加锁以提供独占访问==**。**==在 Hashtable 和 synchronized­ Map  中，获得 Map 的锁能防止其他线程访问这个 Map==** 。在一些不常见的情况中需 要这种功能， 例如通过原子方式添加一些 映射，或者对Map 迭代若干次并在此期间保持元素顺序相同 。然 而，总体来说这种权衡还是合理的，因为并发容器的内容会持续变化 。
+
+与 Hashtable 和 synchronizedMap 相比，ConcurrentHashMap 有着更多的优势以及更少的劣势， 因此在大多数情况下，用ConcurrentHashMap 来代替同步Map 能进一步提高代码的可伸缩性 。 **只有当应用程序需要加锁 Map 以进行独 占访问 时@，才应该放弃使用 ConcurrentHashMap 。**
+
+> @或者需要依赖于同步Map 带来的一些其他作用。
+>
+>
+
+### 5.2.2   额外的原子 Map 操作
+
+由于ConcurrentHashMap 不能被加锁来执行独 占访问，因此我们无法使用客户端加锁来创建新的原子操作 ，例如 4.4.1 节中对 Vector 增加原子操作 “若没有则添加”。但是，**一些常见的复合操作** ，例如“若没有则添加”、“若相等则移除（ Remove-If-Equal ）” 和 “若相等则替换 ( Replace-If-Equal ）” 等，**都已经实现为原子操作井且在ConcurrentMap 的接口中声明**，如程序 清单 5-7 所示。如果你需要在现有的同步 Map 中添加这样的功能，那么很可能就意味着应该考 虑使用 ConcurrentMap   了。
+
+```java
+程序清单 5-7   ConcurrentMap 接口
+public  interface ConcurrentMap<K, V> extends Map<K ,V>  {
+	//仅当 K 没有相应的映射位时才插入
+	v putifAbsent ( K key, v value) ;
+
+    //仅当 K被映射到 v 时才移除
+    boolean  remove (K key,  V Value) ;
+
+    //仅当 K 被映射到 oldValue 时才替换为 newValue
+    boolean  replace ( K  key,  V  oldValue,  V  newValue) ;
+
+    //仅当 K 被映射到某个佳时才替换为 newValue 
+    v  replace ( K  key ,  v  newValue) ;
+
+```
+
+
+
+
+
+5.2.3  CopyOnWriteArraylist
+
+**==CopyOnWriteArrayList  用于替代同步 List，在某些情况下它提供了更好的并发性能 ，并且 在迭代期间不需要对容器进行加锁或 复制。==**（类似地，**CopyOnWriteArraySet     的作用是替代同步 Set**。）
+
+“ 写入时复制（Copy-On-Write）” 容器的线程安全性在于 ，只要正确地发布一个事实不可变的对象 ，那么在访问该对象时就不再需要进一步的同步 。在每次修改时 ，都会创建并重新发布一个新的容器副本 ，从而实现可变性。“**写入时复制” 容器的迭代器保留一个指向底层基础数组的引用 ，这个数组当前位于迭代器的起始位置，由于它不会被修改，因此在对其进行同步时只需确保数组内容的可见性 。因此，多个线程可以同时对这个容器进行迭代 ，而 不会彼此干扰或者与修改容器的线程相互干扰 。“写入时复制” 容器返回的选代器不会抛出 ConcurrentModificationException ，并且返回的元素与迭代器创建时的元素完全一致 ，而不必考 虑之后修改操作所带来的影响 。**
+
+显然，**==每当修改容器时都会复制底层数组 ，这需要一定的开销，特别是当容器的规模较大 时。仅当选代操作远远多于修改操作时，才应该使用“ 写入时复制”   容器==**。这个准则很好地描 述了许多**==事件通知系统==**    ：在分发通知时需要迭代已注册监听器链表，并调用每一个监听器，在 大多数情况下，注册和注销事件监听器的操作远少于接收事件通知的操作。（关于   “写入时复 制” 的更多信息请参见 ［CPJ 2.4.4］ 。）
+
+ 
+
+## 5.3    阻塞队列和生产者 一 消费者模式
+
+**阻塞队列提供了可阻塞的 put 和 take 方怯，以及支持定时的offer 和 poll 方怯 。如果队列 已经满了，那么 put 方陆将阻塞直到有空间可用 ：如果队列为空，那么take 方陆将会阻塞直到有元素可用 。队列可以是有界的也可以是无界的，无界队列永远都不会充满，因此无界队列上 的put 方法也永远不会阻塞 。**
+
+**==阻塞队列支持生产者 消费者这种设计模式==** 。该模式将 “找出需要完成的工作” 与 “执行 工作” 这两个过程分离开来 ，并把工作项放入一个 “待完成” 列表中以便在随后处理，而不是 找出后立即处理。生产者一 消费者模式能简化开发过程 ，因为它消除了**生产者类和消费者类之 间的代码依赖性**，此外，该模式还将**生产数据的过程与使用数据 的过程解藕开**来以简化工作负 载的管理，因为这两个过程在处理数据的速率上有所不同。
+
+在基于阻塞队列构建的生产者 一 消费者设计中 **，当数据生成时，生产者把数据放入队列 ， 而当消费者准备处理数据时 ，将从队列中获取数据 。生产者不需要知道消费者的标识或数量， 或者它们是否是唯一的生产者 ，而只需将数据放入队列即可  。同样，消费者也不需要知道生产 者是谁 ，或者工作来自何处 。****==BlockingQueue**== 简化了生产者 一 消费者设计的实现过程 ，它**==支持任意数量的生产者和消费者==**。一种最常见的生产者 一 消费者设计模式就是线程也与工作 队列的 组合，在 Executor 任务执行框架中就体现了这种模式 ，这也是第 6 章和第 8 章的主题。
+
+以两个人洗盘子为例，二者的劳动分工也是一种生产者 一消费者模式 ：其中一个人把洗好 的盘子放在盘架上
+，而另一个人从盘架上取出盘子并把它们烘干。在这个示例中，盘架相当于 阻塞队列。如果盘架上没有盘子，那么消费者会一直等待，直到有盘子需要烘干。如果盘架放 满了，那么生产者会停止清洗直到盘架 上有更多的空间。我们可以将这种类比扩展为多个生产 者 （虽然可能存在对水槽的竞争〉 和多个消费者，每个工人只需与盘架打交道 。人们不需要知 道究竟有多少生产者或消费者，或者谁生产了某个指定的工作项。
+
+“生产者” 和 “消费者” 的角色是相对的，某种环境中的消费者在另一种不同的环境中可 能会成为生产者 。烘干盘子的工人将 “消费” 洗干净的湿盘子 ，而产生烘干的盘子。第三个人把洗干净的盘子整理好 ，在这种情况中，烘干盘子的工人既是消费者 ，也是生产者 ，从而就有 了两个共享的工作队列 （**每个队列都可能阻塞烘干工作的运行**）。
+
+阻塞队列简化了消费者程序的编码，因为 **take 操作会一直阻塞直到有可用的数据** 。如果 生产者不能尽快地产生工作项使消费者保持忙碌 ，那么消费者就只能一直等待 ，直到有工作可做。在某些情况下，这种方式是非常合适的 （例如，在服务器应用程序中 ，没有任何客户请求 服务），而在其他一些情况下 ，这也表示需要调整生产者线程数量和消费者线程数量之间的比 率，从而实现更高的资源利用率 （例如，在 “网页爬虫 ［Web Crawler］” 或其他应用程序中 ，有无穷的工作需要完成）。                                                                                  
+
+如果生产者生成工作 的速率比消费者处理工作的速率快，那么工作项会在队列中累积起来，最终耗尽内存 。同样，put 方法的阻塞特性也极大地简化了生产者的编码 。**如果使用有界队列，那么当队列充满时 ，生产者将阻塞并且不能继续生成工作 ，而消费者就有时间来赶上工 作处理进度** 。
+
+**==阻塞队列同样提供了一个 offer 方住，如果数据项不能被添加到队列中 ，那么将返回一个 失败状态==**。这样你就能够创建更多灵活的策略来处理负荷过载的情况 ，例如减轻负载，将多余 的工作项序列化并写入磁盘 ，减少生产者线程的数量，或者通过某种方式来抑制 生产者线程 。
+
+>。在构建高可靠的应用程序时，有界队列是一种强大的资源管理工具： 它们能抑制并防止生产过多的工作项，使应用程序在负荷过载的情况下变得更加强壮
+
+
+
+虽然生产者 一 消费者模式能够将生产者和消费者的代码彼此解辑开来 ，但它们的**行为仍然会通过共享工作队列间接地耦合在一起**。开发人员总会假设消费者处理工作的速率能赶上生产 者生成工作项的速率 ，因此通常不会为工作队列的大小设置边界，但这将导致在之后需要重新设计系统架构 。因此，应该尽早地通过阻塞队列在设计中构建资源管理机制  一这件事情做得 越早，就越容易。在许多情况下，阻塞队列能使这项工作更加简单，如果阻塞队列井不完全符合设计需求，那么还可以通过信号量 （ Semaphore） 来创建其他的阻塞数据结构 （请参见 5五3 节）。
+
+在类库中包含了 BlockingQueue 的多种实现，其中，**LinkedBlockingQueue 和 ArrayBlocking­ Queue 是 FIFO 队列，二者分别与 LinkedList 和 ArrayList 类似，但比同步 List 拥有更好的井发性 能。PriorityBlockingQueue 是一个按优先级排序的队列，当你希望按照某种顺序而不是 FIFO 来 处理元素时，这个队列将非常有用。**正如其他有序的容器一样，**PriorityBlockingQueue 既可以 根据元素的自然顺序来比较元素 （ 如果它们实现了 Comparable 方拉），也可以使用 Comparator 来比较。**
+
+
+
+最后一个 BlockingQueue 实现是 SynchronousQueue ，实际上它**不是一个真正的队列**，因为它不会为队列中元素维护存储空间。与其他队列不同的是，**==它维护一组线程 ，这些线程在等待 着把元素加入或移出队列。==**如果以洗盘子的比喻为例，那么这就相当于没有盘架 ，而是将洗好 的盘子直接放入下一个空闲的烘干机中 。这种实现队列的方式看似很奇怪 ，但由于可以直接交付工作，**从而降低了将数据从生产者移动到消费者的延迟** 。（在传统的队列中，在一个工作单 元可以交付之前 ，必须通过串行方式首先完成入列 ［Enqueue］ 或者出列 ［Dequeue］ 等操作。） 直**接交付方式还会将更多关于任务状态的信息反馈给生产者**   。当交付被接受时，它就知道消费者已经得到了任务 ，而不是简单地把任务放入一个队列一  一这种区别就好比将文件直接交给同 事，还是将文件放到她 的邮箱中并希望她能尽快拿到文件 。**因为SynchronousQueue  没有存储 功能，因此 put和 take 会一直阻塞 ，直到有另一个线程已经准备好参与到交付过程中** 。==仅当有 足够多的消费者，并且总是有一个消费者准备好获取交付的工作时，才适合使用同步队列。==
+
+
+
+### 5.3.1   示例 ：桌面搜索
+
+ 有一种类型的程序适合被分解为生产者和消费者  ，例如代理程序，它将扫描本地驱动器上 的文件并建立索引以便随后进行搜索 ，类似于某些桌面搜索程序或者Windows 索引服务 。在 程序清单 5-8 的 DiskCrawler 中给出了一个生产者任务，即在某个文件层次结构中搜索符合索 引标准的文件，并将它们的名称放入工作队列。而且，在 Indexer   中还给出了一个消费者任务， 即从队列中取出文件名称并对它们建立索引。
+
+```java
+程序清单 5-8   桌面搜索应用程序 中的生产者任务和消费者任务
+
+```
 
