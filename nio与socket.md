@@ -137,9 +137,63 @@ public final Buffer rewind(){
 
 
 
+直接缓冲区和非直接缓冲区效率比较
+
+```java
+public class Test1_2 {
+    public static void main(String[] args) {
+        long beginTimes = System.currentTimeMillis();
+        ByteBuffer buffer = ByteBuffer.allocateDirect(1900000000);
+        for (int i = 0; i < 1900000000; i++) {
+            buffer.put( (byte) 123);
+        }
+        long endTimes = System.currentTimeMillis();
+        System.out.println("consume:" + (endTimes - beginTimes));
+
+        System.out.println("====");
+        long beginTimes2 = System.currentTimeMillis();
+        ByteBuffer buffer2 = ByteBuffer.allocate(1900000000);
+        for (int i = 0; i < 1900000000; i++) {
+            buffer2.put( (byte) 123);
+        }
+        long endTimes2 = System.currentTimeMillis();
+        System.out.println("consume:" + (endTimes2 - beginTimes2));
+    }
+}
+
+```
 
 
 
+直接缓冲区比非直接缓冲区效率高一点  **==原因：==**
+
+直接缓冲区使用的是DirectByteBuffer类实现的，而非直接缓冲区使用的是HeapByteBuffer类进行实现的
+
+DirectByteBuffer类的put（byte）方法如下
+
+```java
+public ByteBuffer put (byte x){
+    unsafe.putByte(this.ix(this.nextPutIndex()), var1);
+        return this;
+}
+```
+
+直接缓冲区使用sun.misc.Unsafe类进行值的处理，Unsafe类的作用是JVM与操作系统进行直接通信，提高效率，但该类在使用上并不是安全的，该类没有公开化（public），仅由JDK内部使用
+
+而非直接缓冲区HeapByteBuffer类的put方法
+
+```java
+public ByteBuffer put (byte x){
+   hb[ix(nextPutIndex())] = x;
+   return this;
+}
+```
+
+非直接缓冲区HeapByteBuffer在内部直接对byte[] hb字节数值进行操作，而且还是在JVM堆中进行数据处理操作，因此效率相对慢一些
+
+
+
+wrap(byte[] array) ：将byte数组包装到缓冲区中，新的缓冲区将由给定的数组支持，缓冲区修改将导致数组修改，反之亦然
 
 
 
