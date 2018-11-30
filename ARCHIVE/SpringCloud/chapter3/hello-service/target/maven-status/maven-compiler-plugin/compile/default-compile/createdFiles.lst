@@ -1,0 +1,5 @@
+com\didispace\web\RefactorHelloController.class
+com\didispace\HelloApplication.class
+com\didispace\indicator\RocketMQHealthIndicator.class
+com\didispace\web\HelloController.class
+com\didispace\web\User.class
