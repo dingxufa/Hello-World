@@ -1,0 +1,96 @@
+HIVE中join、semi join、outer join举例详解
+举例子：
+
+hive> select * from zz0;
+111111
+222222
+888888
+hive> select * from zz1;
+111111
+333333
+444444
+888888
+
+hive> select * from zz0 join zz1 on zz0.uid = zz1.uid;
+111111  111111
+888888  888888
+hive> select * from zz0 left outer join zz1 on zz0.uid = zz1.uid;
+111111  111111
+222222  NULL
+888888  888888
+hive> select * from zz0 right outer join zz1 on zz0.uid = zz1.uid;
+NULL
+111111  111111
+NULL    333333
+NULL    444444
+888888  888888
+hive> select * from zz0 full outer join zz1 on zz0.uid = zz1.uid;
+NULL
+111111  111111
+222222  NULL
+NULL    333333
+NULL    444444
+888888  888888
+hive> select * from zz0 left semi join zz1 on zz0.uid = zz1.uid;
+111111  111111
+888888  888888
+
+
+
+由于HIVE中都是等值连接，在JOIN使用的时候，有两种写法在理论上是可以达到相同的效果的。
+
+由于HIVE中都是等值连接，在JOIN使用的时候，有两种写法在理论上是可以达到相同的效果的，但是由于实际情况的不一样，子表中数据的差异导致结果也不太一样。
+
+写法一：
+
+select
+           a.bucket_id,
+        a.search_type,
+            a.level1,
+        a.name1,
+        a.level2,
+        a.name2,
+        cast((a.alipay_fee) as double) as zhuliu_alipay,
+        cast(0 as double) as total_alipay
+        from tmall_data_fdi_search_zhuliu_alipay_cocerage_bucket_1 a
+     left semi join
+     tmall_data_fdi_dim_main_auc b
+     on (a.level2 = b.cat_id2
+         and a.brand_id = b.brand_id
+       and b.cat_id2 > 0
+         and b.brand_id > 0
+         and b.max_price = 0
+     )
+
+3121 条
+写法二：
+select
+           a.bucket_id,
+        a.search_type,
+            a.level1,
+        a.name1,
+        a.level2,
+        a.name2,
+        cast((a.alipay_fee) as double) as zhuliu_alipay,
+        cast(0 as double) as total_alipay
+        from tmall_data_fdi_search_zhuliu_alipay_cocerage_bucket_1 a
+     join   tmall_data_fdi_dim_main_auc b
+     on (a.level2 = b.cat_id2
+         and a.brand_id = b.brand_id)
+  where  b.cat_id2 > 0
+         and b.brand_id > 0
+         and b.max_price = 0
+
+
+结果是：3142
+
+
+这两种写法带来的值居然不是相等的，我一直以为理解这两种方式的写法是一样的，
+但是统计的结果却是不一样的。
+目前还没有搞清楚是什么原因，谁能那个搞清楚呢。
+
+
+经过一层一层的查找，发现是由于子表（tmall_data_fdi_dim_main_auc）中存在重复的数据，当使用JOIN ON的时候，A,B表会关联出两条记录，应为ON上的条件符合；
+而是用LEFT SEMI JOIN 当A表中的记录，在B表上产生符合条件之后就返回，不会再继续查找B表记录了，所以如果B表有重复，也不会产生重复的多条记录。
+
+大多数情况下JOIN ON 和left semi on是对等的，但是在上述情况下会出现重复记录。大家以后可要小心。

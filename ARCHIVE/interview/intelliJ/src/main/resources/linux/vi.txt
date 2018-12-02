@@ -1,0 +1,28 @@
+vi编辑器里面包括了定制vi会话的操作，例如：
+1、显示行号
+2、显示不可视字符，例如tab和行结尾字符
+在命令模式下使用set命令可以控制这些选项：
+编辑定制vi会话命令
+命令功能
+：set nu显示行号
+：set nonu隐藏行号
+：set ic设置搜索时忽略大小写
+：set noic搜索时对大小写敏感
+：set list显示不可视字符
+：set nolist不显示不可视字符
+：set showmode显示当前操作模式
+：set shownomode不显示当前操作模式
+：set显示所有的vi环境变量设置
+：set all显示所有的vi环境变量可能取值及其当前设置值
+:"set wrap " 自动换行
+: "set listchars = tab:>-,trail:- " 将制表符显示为'>---',将行尾空格显示为'-'
+: set listchars=tab:.\ ,trail:. " 将制表符显示为'. '
+: set autochdir " 自动设置目录为正在编辑的文件所在的目录
+: set hidden " 没有保存的缓冲区可以自动被隐藏
+:set hlsearch " 高亮显示搜索结果
+:syn on " 打开语法高亮
+: set showmatch " 设置匹配模式，类似当输入一个左括号时会匹配相应的那个右括号
+:set smartindent " 智能对齐方式
+: set shiftwidth=4 " 换行时行间交错使用4个空格
+:set autoindent " 自动对齐
+:set ai! " 设置自动缩进

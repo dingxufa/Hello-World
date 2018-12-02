@@ -1,0 +1,123 @@
+面试
+
+JVM的内存结构（必问）?
+	参见:http://blog.csdn.net/zhaozheng7758/article/details/8623562
+
+XML和JSON的区别？
+JSON:轻量级的数据交换技术
+XML:重量级的数据交换技术 也能在web应用的配置信息中
+
+HashTable和HashMap的区别？
+    HashTable是线程安全的，可以做成实例变量,不能存null   继承Dictionary  synchronized 方法  不能有null
+    HashMap是线程不安全的，可以做成局部变量，可以存null  继承的abstractMap
+
+Mysql、Oracle的分页？
+       MySQL： select * from table where ... limit ? ,?
+       Oracle： rownumber() over()
+                select * from ( select rownum ... from table where rownum <4)
+                where id > 0
+
+Linux的常用命令（必问）？
+	echo “aa” > test.txt 和 echo “bb” >> test.txt
+	echo $［5*5］ //算术运算
+	cd - //返回上次目录
+
+[hadoop@server0 ~]$ a=1
+[hadoop@server0 ~]$ b=2
+[hadoop@server0 ~]$ echo $2
+
+[hadoop@server0 ~]$ echo $a
+1
+[hadoop@server0 ~]$ echo $a+$b
+1+2
+[hadoop@server0 ~]$ echo $($a+$b)
+-bash: 1+2: command not found
+
+[hadoop@server0 ~]$ echo $(( $a+$b  ))
+3
+[hadoop@server0 ~]$ echo $[ $a + $b ]
+3
+
+
+	.. .. ..
+简述设计模式（懒汉、饿汉、装饰者等）？
+    private static 实例变量
+    private constructor()
+    public static 获取实例变量
+    public class MyRequest extends 原始类型 
+
+Hibernate何时不适用？
+    1.操作超大批量的数据时不合适
+    2.不想占用太多内存
+    3.不想速度过慢
+
+Tomcat、Weblogic的区别？
+    Tomcat是Apache的免费web服务器，支持servlet和jsp技术，不支持ejb技术，并发数量小
+    Weblogic是BEA公司下的一个收费javaee服务器，它支持servlet和jsp技术，支持ejb技术，并发数量大
+
+缓存框架？
+    我个人理解是想问hibernate的二级缓存机制即SessionFactory对象
+
+请求路径.action .do结尾的问题？
+    我个人理解是说Struts2或springmvc的扩展名修改问题 默认扩展名问题
+
+Hibernate的二级缓存（必问，很喜欢问）？
+    二级缓存的配置
+    哪些对象适合于二级缓存的配置 如果对象很少变化适合  否则不适合
+
+Java基本数据类型？int所占的字节数？
+	byte/short/int(4B)/long/float/double/char/boolean
+
+
+什么是Http？
+    超文本传输协议
+    是在非安全请求下，客户端访问服务器的桥梁
+    分两个版本
+    HTTP1.0客户端请求完后，立即断开
+    HTTP2.O客户端请求完后，在一段时间内，保持连接
+
+简述Socket？
+    socket是Java网络编程的核心
+    socket是连接Java客户端与Java服务器的桥梁
+
+GET和POST的区别？
+    GET方式传输的数据有限 不安全
+    POST传输的数据无限  安全
+
+TCP和UDP的异同？
+    TCP是安全性可靠的协议 慢
+    UDP是非安全性的不可靠的协议 快
+
+Cookie的作用？
+    浏览器为了保存客户的访问服务器的信息的技术
+    可以通过cookie获取该用户已经访问过网站的那些信息  是有限制的  
+
+Spring的安全（线程安全？）问题？
+    我理解的是springmvc的action问题
+    springmvc的action是单例的，所以不能写实例变量，只能写局部变量
+
+Java如何新建线程（必问，很喜欢问）？
+    1.extend thread
+    2. runnable
+    3. callable call()
+    .start()
+Sql优化问题？
+
+
+Struts与SpringMVC的区别？
+
+struts2
+  核心过滤器StrutsPrepareAndExecuteFilter
+    action是多例
+    实例变量
+    值栈 
+    OGNL/EL表达式
+    ============================
+    springmvc
+    DispatcherServlet
+    Action是单例的
+    局部变量
+    模型
+    SpringEl/el表达式
+
+

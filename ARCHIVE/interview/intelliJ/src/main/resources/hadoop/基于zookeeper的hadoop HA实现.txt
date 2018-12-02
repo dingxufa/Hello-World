@@ -1,0 +1,41 @@
+非HA弊端:
+HDFS集群的分布式存储是靠namenode节点（namenode负责响应客户端请求）来实现。在非HA集群中一旦namenode宕机，虽然元数据不会丢失，
+但整个集群将无法对外提供服务，导致HDFS服务的可靠性不高，这在实际应用场景中显然是不可行的。
+
+HA机制:
+已知导致服务可靠性不高的原因是namenode节点宕机，那么怎么才能避免这个namenode节点宕机呢？一个容易想到的解决方案是部署两台
+namenode节点，形成主备模式（active/standby模式），这样一旦active节点宕机，standby节点立即切换到active模式。事实上HA机制
+就是采取的这种方案。要想实现该机制，需要解决以下问题：
+1.为什么选择主备模式，而不是主主模式（active/active模式），也即让两个namenode节点都响应客户端的请求
+        一个显然的前提是，两台namenode节点需要保存一致的元数据。
+        我们知道namenode节点是用来管理这些元数据的，响应客户端请求时（上传）需要增加元数据信息，如果使用主主模式，那么两个
+        节点都将对元数据进行写操作，怎么同步是个很困难的问题。因此，只能有一台机器响应请求，也即处在active状态的节点
+        （可称为主节点），而另一台namenode在主节点正常工作情况下仅用来同步active节点的元数据信息，这个namenode称为备用节点
+        （处在standby状态），可见，要解决的问题主要是怎么同步active节点的元数据信息。
+2.怎么同步两个namenode节点的元数据
+      响应客户端请求的是active节点，因此只有active节点保存了最新的元数据。元数据分为两部分，一部分是刚写入新的元数据（edits），
+      另一部分是合并后的较旧的（fsimage）。HA机制解决同步问题的方法是将active节点新写入的edits元数据放在zookeeper集群上
+      （zookeeper集群主要功能是实现少量数据的分布式同步管理），standby节点在active节点正常情况下只需要将zookeeper集群上
+      edits文件同步到自己的fsimage中就可以。
+       hadoop框架为这个集群专门写了个分布式应用qjournal（依赖zookeeper实现），实现qjournal的节点称为journalnode。
+3.怎么感知active节点是否宕机，并将standby节点快速切换到active状态？
+        解决方案是专门在namenode节点上启动一个监控进程，时刻监控namenode的状态。对于处在active状态的namenode，如果发现
+        不正常就向zookeeper集群中写入一些数据。对于处在standby状态的namenode，监控进程从zookeeper集群中读数据，从而感知到
+        active节点是否正常。如果发现异常，监控进程负责将standby状态切换到active状态。这个监控进程在hadoop中叫做zkfc
+        （依赖zookeeper实现）。
+4.如何在状态切换时避免brain split(脑裂)？
+        脑裂：active namenode工作不正常后，zkfc在zookeeper中写入一些数据，表明异常，这时standby namenode中的zkfc读到异常信息，
+        并将standby节点置为active。但是，如果之前的active namenode并没有真的死掉，出现了假死（死了一会儿后又正常了，哈哈，
+        是不是很搞笑），这样，就有两台namenode同时工作了。这种现象称为脑裂。
+        解决方案：standby namenode感知到主用节点出现异常后并不会立即切换状态，zkfc会首先通过ssh远程杀死active节点的 namenode进程
+        （kill -9 进程号）。但是（这样还不行，惊讶），如果kill指令没有执行成功咋办？？如果在一段时间内没有收到执行成功的回执，
+        standby节点会执行一个自定义脚本，尽量保证不会出现脑裂问题！这个机制在hadoop中称为fencing（包括ssh发送kill指令，
+        执行自定义脚本两道保障）
+
+
+
+解决上诉问题以后，基本上就实现了hadoop HA 。
+
+
+
+HA是通过先后获取zk的锁决定谁是主

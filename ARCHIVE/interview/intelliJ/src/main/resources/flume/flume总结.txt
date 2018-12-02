@@ -1,0 +1,166 @@
+flume
+
+flume输入叫做源，输出叫做接收器  中间为通道
+源将事件写到一个或多个通道中
+通道作为事件从源到接收器传递的保留区
+接收器只从一个通道接收事件
+代理可能会有多个源、通道、接收器
+
+flume事件：传输的基本的数据负载叫事件  头 + 体
+头是键值对
+体是字节数组
+拦截器是数据流中的一个点，类似于spring框架中的methodInterceptor，在servlet中类似filter
+通道选择器负责将一个源转向一个或多个通道上
+    ---复制通道选择器（默认）只是将事件的副本放到每个通道中
+    ---多路通道选择器会根据某些头信息将事件写到不同通道
+数据转换可能发生在任何源之后以及任何接收器（输出）之前
+
+
+
+指定一个代理agent
+agent.sources=s1
+agent.channels=c1
+agent.sinks=k1
+agent.sources.s1.type=netcat
+agent.sources.s1.channels=c1
+agent.sources.s1.bind=0.0.0.0   //绑定的IP
+agent.sources.s1.port=12345
+agent.channels.c1.type=memory   //内存通道
+agent.channels.c1.capacity=200  //能持有的最大的flume事件数量 默认100，增加这个参数还要增加Java堆空间 -Xmx
+agent.sinks.k1.type=logger   //log4j将所有INFO级别的日志记录下来
+agent.sinks.k1.channel=c1  //通道是单数的，因为一个接收器只能从一个通道接收数据
+
+
+1.下载解压flume.tar.gz
+2.配置conf/xx.conf
+3.bin/flume-ng agent -n   agent(代理名称)  -c  conf  -f  conf/xx.conf -Dflume.root.logger=INFO,console
+(ask:既然-f参数包含了配置的完整相对路径，为什么还要指定-c参数 ，原因在于log4j配置文件需要放到classpath中，不加-c会报错)
+3.bin/flume-ng agent -n   agent(代理名称)  -c  conf  -f  conf/xx.conf -Dflume.root.logger=INFO,console
+
+
+
+=====通道
+两类:  
+1.内存/非持久化通道   更快  存在出现失败导致数据丢失 存储能力较低
+2.本地文件系统/持久化通道 在出现系统事件或是flume代理重启恢复
+
+内存通道
+capacity 
+keep-alive  通道已满并且在放弃之前，线程将数据写到通道中的等待时间
+
+文件通道  默认的文件通道容量 是100万个事件，无论事件内容的大小是多少
+write ahead log （WAL）
+type   file   : agent.channels.checkpointDir=/flume/c1/checkpoint
+checkpointDir=/flume/c1/data
+keep-alive 满载的通道在放弃前，源尝试写入通道中的最大等待时间
+
+从channel写到接收器是有事务的
+========接收器
+type hdfs   ：  agent.sinks.k1.type=hdfs
+agent.sinks.s1.hdfs.path=/path/in/hdfs   hdfs://namenode/users/flume/mydata
+
+(
+agent.sinks.k1.hdfs.path=/logs/apache/access
+agent.sinks.k1.hdfs.filePrefix=access
+agent.sinks.k1.hdfs.fileSuffix=.log
+    /logs/apache/access/access.12321443.log
+agent.sinks.k1.hdfs.path=/logs/apache/access/%Y/%m/%D/%H
+)
+当文件被写到HDFS中时会添加一个.tmp扩展名，当文件关闭时，该扩展名会被删除
+
+
+事件序列化器：flume事件转换为另一种格式来输出的机制 （强调的是输出的内容的形式）
+1.text序列化器：只输出flume事件体丢掉头信息，每个事件后有个换行符
+2.text_with_heads序列化器：保存事件头 {key=value,key=value} body text 
+3.avro_event序列化器
+
+输出文件类型
+1.序列文件  键值对
+hdfs.fileType=SequenceFile
+hdfs.writeType=writeable    /// 或 text
+2.数据流  数据没有自然的键
+agent.sinks.k1.fileType=DataStream
+3.压缩流
+agent.sinks.k1.fileType=CompressedStream
+
+接收器组，负载均衡  故障恢复（避免接收器单点故障）
+agent.sinkgroups=sg1
+agent.sinkgroups.sg1.sinks=k1,k2,k3
+agent.sinkgroups.sg1.processor.type=failover   //load_balance是负载均衡
+agent.sinkgroups.sg1.processor.priority.k1=10
+agent.sinkgroups.sg1.processor.priority.k2=10
+agent.sinkgroups.sg1.processor.priority.k3=10
+优先级数字低的表示会优先使用，数字相同的则会随机使用
+都不可用，该通道的事务就会回滚
+
+
+=============源与源通道选择器===
+
+
+exec源
+agent.sources=s1
+agent.sources.s1.channels=c1
+agent.sources.s1.type=exec
+agent.sources.s1.command=tail -F /var/log/app.log
+(在flume代理关闭 或重启时，此方式不保证 派生出来的进程会100%关闭，可能会出现永远不会退出的tail进程，即使tail的文件已经删除
+占用的资源也不释放  ---》周期性扫描父PID为1的tail-F进程，杀掉它)
+
+batchSize  指定每个事物中要写入的事件数量默认20
+如果数据过大，并且无法足够快的向通道中写入，可以使用更大的值，降低总体平均事务成本
+
+
+假脱机目录源:为了解决tail问题
+agent.sources=s1
+agent.sources.channels=c1
+agent.sources.s1.type=spooldir
+agent.sources.s1.spooldir=/path/to/files
+agent.sources.s1.fileSuffix=.DONE  //默认 .COMPLETED  当文件传输完毕后重命名
+batchSize调节每个事务中写到通道中的事件数量
+
+重启与错误会对假脱机目录中的文件创建重复的事件，这是因为没有被标记为已完成，文件会被重传
+
+
+syslog数据源
+syslog UDP源
+    agent.sources=s1
+    agent.sources.s1.type=syslogudp
+    agent.sources.s1.host=0.0.0.0
+    agent.sources.s1.port=12345
+syslog TCP源 ：更大的负载
+    agent.sources=s1
+    agent.sources.s1.type=syslogtcp
+    agent.sources.s1.host=0.0.0.0
+    agent.sources.s1.port=12345
+多端口syslog TCP源
+    agent.sources=s1
+    agent.sources.s1.type=multiport_syslogtcp
+    agent.sources.s1.host=0.0.0.0
+    agent.sources.s1.port=3333 4444
+
+
+    
+通道选择器=====
+一个源可以写到一个或多个通道中
+
+1.复制通道选择器
+agent.sources.s1.channels=c1 c2 c3
+agent.sources.s1.selector.type=replacating
+每个事件都会被写到所有3个通道中
+
+agent.sources.s1.channels=c1 c2 c3
+agent.sources.s1.selector.type=replacating
+agent.sources.s1.selector.optional=c2 c3
+写入到c2或c3时遇到的任何失败都不会造成事务失败
+
+
+2.多路复用
+不同的通道发送不同的事件
+agent.sources.s1.selector.type=multiplexing
+agent.sources.s1.selector.header=port //告诉通道选择器使用哪个头
+
+
+
+flume的sink的持久化触发器 可以有多种
+大小，时间间隔  消息条数等
+
+

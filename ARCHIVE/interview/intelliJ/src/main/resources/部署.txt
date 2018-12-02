@@ -1,0 +1,117 @@
+部署zookeeper
+1.tar
+2.conf/zoo_sample.cfg -->zoo.cfg
+clientPort=2181
+tickTime 2000   (ms)
+dataDir=            zookeeper保存数据目录  myid  
+server.1=host1:2888:3888
+server.2=host2:2888:3888
+server.3=host3:2888:3888  节点通信 选取leader
+
+
+部署spark
+1.ssh  ssh-keygen  ssh-id-copy  ip
+2.spat.tar 复制解压到每个机器
+3.
+con/slaves
+    ip
+cnf/spark-env.sh   cp spark-env.sh.template spark-env.sh
+    JAVA_HOME
+    
+spark HA
+-zookeeper方案
+cnf/spark-env.sh
+        spark.deploy.recoveryMode   ZOOKEEPER
+        spark.deploy.zookeeper.url  192.168.40.145:2181,192.168.40.145:2181,
+        spark.deploy.zookeeper.dir  在zookeeper上的目录
+
+
+
+sbin/start-all.sh  启动本机作为master，并且启动conf/slaves中的所有slave
+（如果还准备了其他备用的master，要专门去该机器上启动sbin/start-master.sh）
+
+sbin/stop-all.sh  停止集群       
+
+
+spark standalone模式只支持简单的固定资源分配策略，每个job固定core数，，各job按顺序依次分配资源，资源不够排队等候
+不适合多用户场景
+配置spark支持yarn动态资源分配策略
+1.con/spark-env
+    HADOOP_CONF_DIR=/hadoop/conf
+2.重启集群
+
+
+bin/spark-submit --class xxx  --master   spark://host(ip):pirt   
+--master spark://   使用spark自己的master节点调度
+--master  yarn-cluster/yarn-client  使用yarn调度
+     yarn-cluster  在集群中启动一个master driver程序运行在master进程内部   适合生产
+     yarn-client  在集群中启动一个master driver程序运行在本地    适合交互
+     
+     
+     
+     
+===============
+[hadoop@server0 hive]$ cat conf/hive-site.xml 
+
+<configuration>
+        <property>
+                <name>javax.jdo.option.ConnectionURL</name>
+                <value>jdbc:mysql://server0:3306/hivedb?createDatabaseIfNotExist=true&amp;useSSL=false</value>
+        </property>
+        <property>
+                <name>javax.jdo.option.ConnectionDriverName</name>
+                <value>com.mysql.jdbc.Driver</value>
+        </property>
+        <property>
+                <name>javax.jdo.option.ConnectionUserName</name>
+                <value>root</value>
+        </property>
+        <property>
+                <name>javax.jdo.option.ConnectionPassword</name>
+                <value>root123</value>
+        </property>
+</configuration>
+========================spark
+
+( chown -R hadoop:hadoop jdk-7u79-linux-x64.tar.gz )
+1.上传spark-1.6.1-bin-hadoop2.6.tgz   
+    alt+p --> put "D:\download\spark-1.6.1-bin-hadoop2.6.tgz"
+    tar -zxvf spark-1.6.1-bin-hadoop2.6.tgz -C app/
+2.安装JDK 最好1.7.45以上版本
+3.解压
+4.修改配置文件  spark-env.sh slaves
+    cp spark-env.sh.template spark-env.sh
+    vi spark-env.sh
+        export JAVA_HOME=/usr/local/jdk1.7.0_79
+        export SPARK_MASTER_IP=node1.itcast.cn
+        export SPARK_MASTER_PORT=7077
+    vi slaves
+        node2.itcast.cn
+        node3.itcast.cn
+        node4.itcast.cn
+    修改/etc/hosts  vi /etc/hosts
+    192.168.40.145 node1.itcast.cn
+    192.168.40.80 node2.itcast.cn
+    192.168.40.81 node3.itcast.cn
+    192.168.40.82 node4.itcast.cn
+    
+5.scp -r
+    scp -r spark1.6.3  mini0:/home/hadoop/app/   
+    scp -r spark1.6.3  mini1:/home/hadoop/app/   
+    scp -r spark1.6.3  mini2:/home/hadoop/app/   
+6.关闭防火墙
+
+7.免密码登陆  ssh-keygen / ssh-copy-id ip 
+
+8.启动spark   sbin/start-all.sh 只需在master上执行就行
+                                           整个任务占用4个核          每个worker(台机器)上占用4g
+bin/spark-shell  --master spark://ip:7077 --total-executor-cores 4   --executor-memory 4g 
+bin/spark-shell  --master spark://node1.itcast.cn:7077 --total-executor-cores 2 --executor-memory 2g
+bin/spark-submit --class org.apache.spark.examples.SparkPi --master spark://server0:7077  /home/hadoop/app/spark1.6.1/lib/spark-examples-1.6.1-hadoop2.6.0.jar 100
+
+http://server0:8080/   访问网页 spark 
+http://server0:50070/   hdfs 
+
+date -s "2016-05-14 15:34:00"  设置时间
+     
+    

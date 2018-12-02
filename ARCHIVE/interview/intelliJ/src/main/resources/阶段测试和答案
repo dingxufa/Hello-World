@@ -1,0 +1,248 @@
+本部分教程由慕课大巴收集整理，慕课大巴是一个教程分享社区
+
+访问 www.mukedaba.com 了解更多
+
+-------------------------------------------------------
+
+阶段测试题
+
+
+%%运行一个脚本时  ./bin/script.sh   和  /bin/script.sh 两种方式有何区别？
+带点号的，是在当前bash进程中运行，不带点号的是在一个新的bash子进程中运行
+
+%%脚本中直接定义一个变量 a=3  和 export a=3 有何区别
+a=3在所运行的bash进程环境中有效
+export a=3 在所运行的bash进程和父进程中都有效
+
+
+%%shell脚本中如何定义一个函数？ 函数可以返回一个对象么？
+示例：
+function fSum()
+ {
+   echo $1,$2;
+   return $(($1+$2));
+ }
+函数可以有返回值
+
+%%shell脚本中如何引用另一个shell脚本？
+方法一:使用source
+#!/bin/bash
+echo 'your are in second file'
+source first
+方法二:使用.
+#!/bin/bash
+echo 'your are in second file'
+. first
+
+方法三:使用sh
+#!/bin/bash
+echo 'your are in second file'
+sh  first
+
+
+%%shell脚本中的函数如何获取输入参数？
+可以通过$n， n用数字代替，比如$3表示获取第三个输入参数
+还可以用$@   $*  获取所有输入参数
+
+
+%%shell脚本中如何获取一条命令的执行结果，并将其赋值给一个变量？
+示例：
+res = `ls /`
+
+
+%% $?  $0  $* $@分别是什么含义？
+$？  获取上一条命令的执行结果
+$0   获取第一个输入参数
+$* $@  获取所有输入参数
+"$@" 则可得到 "p1" "p2 p3" "p4" 这三个不同的词段(word);
+"$*" 则可得到 "p1 p2 p3 p4" 这一整串单一的词段。
+
+%%编写一个脚本，将/home/hadoop/test/下的符合"access.log.*"文件名的文件移动到/home/hadoop/test/toupload下，并上传到hdfs指定目录中/data/今日日期/
+参见《day07_hdfs定时上传shell的案列》
+
+
+%%使用crontab来定时执行上述脚本
+参见《day07_hdfs定时上传shell的案列》
+*/1 * * * * sh /export/servers/shell/uploadFile2Hdfs.v2.sh
+*/1 * * * * sh  source /etc/profile;sh /export/servers/shell/uploadFile2Hdfs.v1.sh
+
+# 编辑命令是crontab -e
+# 查看命令是crontab -l
+
+%%编写一个脚本，通过读取slaves配置文件，批量自动启动3个服务器上的zookeeper
+while read line
+do
+ssh $line "source /etc/profile; /home/hadoop/apps/zookeeper/bin/zkServer.sh start"
+done < slaves.txt
+
+
+%%编写一个程序，实现分布式系统中的服务器动态上下线和客户端实时感知并获取新的在线服务器列表
+参见《day03_zookeeper应用案例》
+
+%%编写一个分布式系统，实现从一个节点上发布一个jar包到另外几个节点上，并成功启动jar包内的程序，jar包内的程序是输出当前时间到文件中
+
+
+%%什么是RPC？简述其底层的实现机制
+RPC：远程过程调用，简单来说，就是进程间的调用
+底层的实现：网络通信+序列化+反射+动态代理
+
+%%你所知道的RPC框架有哪些？
+HADOOP RPC
+dubbo
+mina
+
+%%如何设计一个自己的RPC框架？
+参见《day05_自定义轻量级RPC框架》
+
+
+%%简述你自己开发的RPC框架的技术架构
+参见《day05_自定义轻量级RPC框架》
+
+%%NIO和传统IO最大的区别是什么？分别适用什么样的场景？
+NIO采用同步非阻塞的IO编程模型
+传统IO采用同步阻塞式的IO编程模型
+
+%%hadoop集群中的hdfs和yarn是什么关系？启动hadoop集群时必须两个都启吗？
+hdfs和yarn没有关系
+
+
+%%hdfs集群应该有几个namenode节点？
+在非HA机制下的hdfs集群，有一个namenode
+在HA机制下的hdfs集群，可以有多对namenode
+
+
+%%hdfs集群的datanode节点是由etc/hadoop/slaves文件配置决定的吗？
+etc/hadoop/slaves文件中所列出的节点只是start-dfs.sh脚本会自动启动的datanode节点
+但一个节点只要启动dataonde进程，并能与namenode联网，就能成为hdfs集群的datanode节点
+
+
+%%简述JVM的内存模型
+主要可以分为堆、栈、方法区，堆又分为新生代、survival、老年代；
+详情参见分享的《有道云笔记》
+
+%%JVM的内存溢出的原因有哪些？如果发生内存溢出，可以通过什么方式来分析？
+堆内存溢出：创建的对象太多，垃圾回收不及时
+栈内存溢出：线程数量太多，或者方法的压栈深度太大
+方法区溢出：加载的类太多
+内存溢出可以使用memoryananlyzer工具来分析JVM溢出dump文件
+
+
+%%JVM的垃圾回收算法有哪些？ CMS垃圾回收器会发生stop the world现象吗？
+标记清除
+标记整理
+复制算法
+详见《JVM_有道云笔记分享》
+
+
+%%简述synchronized和lock的异同，线程死锁是怎么发生的？
+详见《day04_lock和synchronize的异同》
+
+%%列出jdk中常用的线程池类型及阻塞队列的用法
+详见《day04》
+
+
+%%简述一个全新的datanode节点是如何加入hdfs集群的？
+datanode进程会通过配置文件找到namenode所在的主机，并跟namenode通信获取clusterid和blockpool_id，从来获得加入集群的身份，进而生成本地工作目录，接受namenode的数据负载分配
+
+
+%%hdfs中文件的block大小由谁决定？副本数量由谁决定？ 通过哪些方式可以指定？
+block大小及副本数量皆由上传文件的客户端指定
+可以通过配置文件和代码中设置参数来指定
+
+%%namenode会负责存储用户上传的数据么？
+namenode只负责维护元数据
+
+
+%%namenode的safemode是怎么回事？如何才能退出safemode
+namenode刚启动时，内存中的元数据只有所有文件块信息，但是并不会记录文件块所在的datanode，需要datanode向自己汇报，然后记录下文件块和datanode之间的文件映射信息，
+如果namenode发现datanode所汇报的文件块没有达到namenode内存中元数据所有文件块总数的一个百分比阈值，则会将自身置于safemode状态
+只有当datanode汇报的block信息超过那个阈值，才会退出safemode
+当然，也可以手动强制退出safemode，不过不建议这么鲁莽
+
+
+%%secondarynamenode的主要职责是什么？简述其工作机制
+sn的主要职责是执行checkpoint操作
+工作机制详情参见《day07》
+
+%%如果namenode宕机，hdfs集群能否正常提供服务？
+否
+
+
+%%如果namenode宕机，datanode节点是否也会跟着挂掉？
+否
+
+
+%%如果namenode上的硬盘损坏，如何挽救？
+主要挽救元数据：1、如果namenode的元数据目录配了多块硬盘，则问题很好解决，替换掉坏硬盘即可
+2、如果namenode的元数据目录只配了一块磁盘，则可以从secondarynamenode上拷贝元数据目录来恢复元数据
+
+
+%%hdfs是否适合直接拿来当网盘用？为什么？
+不适合
+原因：读写速度都慢，且数据不便修改
+
+
+%%hdfs的客户端是否必须运行在hadoop集群中的节点上？
+否
+
+
+%%通过hdfs的客户端api，能获取到指定文件的block信息吗？
+可以
+
+%%通过hdfs的客户端api，能读取指定文件中指定偏移量范围的数据吗？
+可以
+
+%%编写一个程序，读取hdfs中指定文件的第二个block的内容
+参见《day07》
+
+
+%%hdfs的命令行操作是否必须在namenode节点上执行？
+否
+
+%%简述hdfs的数据读写流程
+参见《day07》
+
+%%简述mapreduce的编程模型
+参见《day09_mapreduce原理全剖析--段氏六脉神剑.png》
+
+%%简述mapreduce中的shuffle机制
+参见《day09_mapreduce原理全剖析--段氏六脉神剑.png》
+
+%%简述mapreduce程序运行的流程
+参见《day09_mapreduce原理全剖析--段氏六脉神剑.png》
+
+
+%%mapreduce程序运行时会有哪些进程角色？
+driver(mr的job提交客户端)
+mrappmaster
+yarnchild(map task)
+yarnchild(reduce task)
+
+
+%%列出mapreduce程序中提供给用户的业务接口
+MAPPER
+REDUCER
+INPUTFORMAT
+RECORDREADER
+OUTPUTFORMAT
+RECORDWRITER
+GROUPINGCOMPARATOR
+PARTITIONER
+WRITABLE
+WRITABLECOMPARABLE
+
+%%mapreduce中默认的partition机制是什么？
+HASHPARTITIONER
+
+%%mapreduce框架是否有自动排序机制？简述其机制，并说明如何实现自定义排序
+有自定义排序机制
+map端和reduce端在shuffle的过程中都有排序操作
+参见《day09_mapreduce原理全剖析--段氏六脉神剑.png》
+
+
+
+
+
+
+
+

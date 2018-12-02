@@ -1,0 +1,156 @@
+===========kafka的message包括哪些信息
+一个Kafka的Message由一个固定长度的header和一个变长的消息体body组成header部分由一个字节的magic(文件格式)和四个字节的CRC32
+(用于判断body消息体是否正常)构成。当magic的值为1的时候，会在magic和crc32之间多一个字节的数据：attributes(保存一些相关属性，
+比如是否压缩、压缩格式等等)；如果magic的值为0，那么不存在attributes属性
+body是由N个字节构成的一个消息体，包含了具体的key/value消息
+============怎么查看kafka的offset
+0.9版本以上，可以用最新的Consumer client 客户端，有consumer.seekToEnd() / consumer.position() 可以用于得到当前最新的offset：
+============hadoop的shuffle过程
+一、Map端的shuffle
+Map端会处理输入数据并产生中间结果，这个中间结果会写到本地磁盘，而不是HDFS。每个Map的输出会先写到内存缓冲区中，
+    当写入的数据达到设定的阈值时，系统将会启动一个线程将缓冲区的数据写到磁盘，这个过程叫做spill。
+    在spill写入之前，会先进行二次排序，首先根据数据所属的partition进行排序，然后每个partition中的数据再按key来排序。
+    partition的目是将记录划分到不同的Reducer上去，以期望能够达到负载均衡，以后的Reducer就会根据partition来读取自己对应的数据。
+    接着运行combiner(如果设置了的话)，combiner的本质也是一个Reducer，其目的是对将要写入到磁盘上的文件先进行一次处理，这样，
+    写入到磁盘的数据量就会减少。
+    最后将数据写到本地磁盘产生spill文件(spill文件保存在{mapred.local.dir}指定的目录中，Map任务结束后就会被删除)。
+    最后，每个Map任务可能产生多个spill文件，在每个Map任务完成前，会通过多路归并算法将这些spill文件归并成一个文件。
+    至此，Map的shuffle过程就结束了。
+二、Reduce端的shuffle
+Reduce端的shuffle主要包括三个阶段，copy、sort(merge)和reduce。
+    首先要将Map端产生的输出文件拷贝到Reduce端，但每个Reducer如何知道自己应该处理哪些数据呢？因为Map端进行partition的时候，
+    实际上就相当于指定了每个Reducer要处理的数据(partition就对应了Reducer)，所以Reducer在拷贝数据的时候只需拷贝与自己对应
+    的partition中的数据即可。每个Reducer会处理一个或者多个partition，但需要先将自己对应的partition中的数据从每个Map的输出
+    结果中拷贝过来。
+    接下来就是sort阶段，也成为merge阶段，因为这个阶段的主要工作是执行了归并排序。从Map端拷贝到Reduce端的数据都是有序的，
+    所以很适合归并排序。最终在Reduce端生成一个较大的文件作为Reduce的输入。
+    最后就是Reduce过程了，在这个过程中产生了最终的输出结果，并将其写到HDFS上。
+=============spark集群运算的模式
+Spark 有很多种模式，最简单就是单机本地模式，还有单机伪分布式模式，复杂的则运行在集群中，目前能很好的运行在 Yarn和 Mesos 中，
+当然 Spark 还有自带的 Standalone 模式，对于大多数情况 Standalone 模式就足够了，如果企业已经有 Yarn 或者 Mesos 环境，
+也是很方便部署的。
+standalone(集群模式)：典型的Mater/slave模式，不过也能看出Master是有单点故障的；Spark支持ZooKeeper来实现 HA
+on yarn(集群模式)： 运行在 yarn 资源管理器框架之上，由 yarn 负责资源管理，Spark 负责任务调度和计算
+on mesos(集群模式)： 运行在 mesos 资源管理器框架之上，由 mesos 负责资源管理，Spark 负责任务调度和计算
+on cloud(集群模式)：比如 AWS 的 EC2，使用这个模式能很方便的访问 Amazon的 S3;Spark 支持多种分布式存储系统：HDFS 和 S3
+=============HDFS读写数据的过程
+读：
+1、跟namenode通信查询元数据，找到文件块所在的datanode服务器
+2、挑选一台datanode（就近原则，然后随机）服务器，请求建立socket流
+3、datanode开始发送数据（从磁盘里面读取数据放入流，以packet为单位来做校验）
+4、客户端以packet为单位接收，现在本地缓存，然后写入目标文件
+写：
+1、根namenode通信请求上传文件，namenode检查目标文件是否已存在，父目录是否存在
+2、namenode返回是否可以上传
+3、client请求第一个 block该传输到哪些datanode服务器上
+4、namenode返回3个datanode服务器ABC
+5、client请求3台dn中的一台A上传数据（本质上是一个RPC调用，建立pipeline），A收到请求会继续调用B，然后B调用C，
+    将真个pipeline建立完成，逐级返回客户端
+6、client开始往A上传第一个block（先从磁盘读取数据放到一个本地内存缓存），以packet为单位，A收到一个packet就会传给B，B传给C；
+    A每传一个packet会放入一个应答队列等待应答
+7、当一个block传输完成之后，client再次请求namenode上传第二个block的服务器。
+============RDD中reduceBykey与groupByKey哪个性能好，为什么
+reduceByKey：reduceByKey会在结果发送至reducer之前会对每个mapper在本地进行merge，有点类似于在MapReduce中的combiner。
+    这样做的好处在于，在map端进行一次reduce之后，数据量会大幅度减小，从而减小传输，保证reduce端能够更快的进行结果计算。
+groupByKey：groupByKey会对每一个RDD中的value值进行聚合形成一个序列(Iterator)，此操作发生在reduce端，所以势必会将所有的数据
+    通过网络进行传输，造成不必要的浪费。同时如果数据量十分大，可能还会造成OutOfMemoryError。
+    通过以上对比可以发现在进行大量数据的reduce操作时候建议使用reduceByKey。不仅可以提高速度，还是可以防止使用groupByKey
+    造成的内存溢出问题。
+=========spark sql怎么取数据的差集
+import org.apache.spark.sql.functions._
+// 对整个DataFrame的数据去重
+data.distinct()
+data.dropDuplicates()
+
+// 对指定列的去重
+val colArray=Array("affairs", "gender")
+data.dropDuplicates(colArray)
+//data.dropDuplicates("affairs", "gender")
+
+
+val df=data.filter("gender=='male' ")
+// data与df的差集
+data.except(df).show
+
+// data与df的交集
+data.intersect(df)
+
+
+更简单：ANSI SQL与更合理的API
+
+速度更快：用Spark作为编译器
+
+更智能：Structured Streaming
+
+============rdd 怎么分区宽依赖和窄依赖
+宽依赖：父RDD的分区被子RDD的多个分区使用 例如 groupByKey、reduceByKey、sortByKey等操作会产生宽依赖，会产生shuffle
+窄依赖：父RDD的每个分区都只被子RDD的一个分区使用 例如map、filter、union等操作会产生窄依赖
+=============spark streaming 读取kafka数据的两种方式
+这两种方式分别是：
+Receiver-base
+使用Kafka的高层次Consumer API来实现。receiver从Kafka中获取的数据都存储在Spark Executor的内存中，然后Spark Streaming启动的
+    job会去处理那些数据。然而，在默认的配置下，这种方式可能会因为底层的失败而丢失数据。如果要启用高可靠机制，让数据零丢失，
+    就必须启用Spark Streaming的预写日志机制（Write Ahead Log，WAL）。该机制会同步地将接收到的Kafka数据写入分布式文件系统
+    （比如HDFS）上的预写日志中。所以，即使底层节点出现了失败，也可以使用预写日志中的数据进行恢复。
+Direct
+Spark1.3中引入Direct方式，用来替代掉使用Receiver接收数据，这种方式会周期性地查询Kafka，获得每个topic+partition的最新的offset，
+从而定义每个batch的offset的范围。当处理数据的job启动时，就会使用Kafka的简单consumer api来获取Kafka指定offset范围的数据。
+==================kafka的数据存在内存还是磁盘
+Kafka最核心的思想是使用磁盘，而不是使用内存，可能所有人都会认为，内存的速度一定比磁盘快，我也不例外。在看了Kafka的设计思想，
+查阅了相应资料再加上自己的测试后，发现磁盘的顺序读写速度和内存持平。
+而且Linux对于磁盘的读写优化也比较多，包括read-ahead和write-behind，磁盘缓存等。如果在内存做这些操作的时候，一个是JAVA对象的内存开销很大，另一个是随着堆内存数据的增多，JAVA的GC时间会变得很长，使用磁盘操作有以下几个好处：
+磁盘缓存由Linux系统维护，减少了程序员的不少工作。
+磁盘顺序读写速度超过内存随机读写。
+JVM的GC效率低，内存占用大。使用磁盘可以避免这一问题。
+系统冷启动后，磁盘缓存依然可用。
+===============怎么解决kafka的数据丢失
+producer端：
+宏观上看保证数据的可靠安全性，肯定是依据分区数做好数据备份，设立副本数。
+broker端：
+topic设置多分区，分区自适应所在机器，为了让各分区均匀分布在所在的broker中，分区数要大于broker数。
+分区是kafka进行并行读写的单位，是提升kafka速度的关键。
+Consumer端
+consumer端丢失消息的情形比较简单：如果在消息处理完成前就提交了offset，那么就有可能造成数据的丢失。由于Kafka consumer默认是
+自动提交位移的，所以在后台提交位移前一定要保证消息被正常处理了，因此不建议采用很重的处理逻辑，如果处理耗时很长，
+则建议把逻辑放到另一个线程中去做。为了避免数据丢失，现给出两点建议：
+enable.auto.commit=false 关闭自动提交位移
+在消息被完整处理之后再手动提交位移
+
+
+==================Redis性能优化，单机增加CPU核数是否会提高性能
+1、根据业务需要选择合适的数据类型，并为不同的应用场景设置相应的紧凑存储参数。
+2、当业务场景不需要数据持久化时，关闭所有的持久化方式可以获得最佳的性能以及最大的内存使用量。
+3、如果需要使用持久化，根据是否可以容忍重启丢失部分数据在快照方式与语句追加方式之间选择其一，不要使用虚拟内存以及diskstore方式。
+4、不要让你的Redis所在机器物理内存使用超过实际内存总量的3/5。
+我们知道Redis是用"单线程-多路复用io模型"来实现高性能的内存数据服务的，这种机制避免了使用锁，但是同时这种机制在进行sunion
+之类的比较耗时的命令时会使redis的并发下降。因为是单一线程，所以同一时刻只有一个操作在进行，所以，耗时的命令会导致并发的下降，
+不只是读并发，写并发也会下降。而单一线程也只能用到一个cpu核心，所以可以在同一个多核的服务器中，可以启动多个实例，
+组成master-master或者master-slave的形式，耗时的读命令可以完全在slave进行。
+=================采集数据为什么选择kafka
+采集层 主要可以使用Flume, Kafka两种技术。
+Flume：Flume 是管道流方式，提供了很多的默认实现，让用户通过参数部署，及扩展API.
+Kafka：Kafka是一个可持久化的分布式的消息队列。
+Kafka 是一个非常通用的系统。你可以有许多生产者和很多的消费者共享多个主题Topics。
+相比之下,Flume是一个专用工具被设计为旨在往HDFS,HBase发送数据。
+它对HDFS有特殊的优化，并且集成了Hadoop的安全特性。所以，Cloudera 建议如果数据被多个系统消费的话，使用kafka；
+如果数据被设计给Hadoop使用，使用Flume。
+=================项目中遇到什么难题，有没有数据丢失，怎么解决
+难题就是数据丢失
+==============rdd怎么划分stage
+map,filtre为窄依赖，
+groupbykey为款依赖
+遇到一个宽依赖就分一个stage
+==============RDD中reduceBykey与groupByKey的区别
+reduceByKey：reduceByKey会在结果发送至reducer之前会对每个mapper在本地进行merge，有点类似于在MapReduce中的combiner。
+这样做的好处在于，在map端进行一次reduce之后，数据量会大幅度减小，从而减小传输，保证reduce端能够更快的进行结果计算。
+groupByKey：groupByKey会对每一个RDD中的value值进行聚合形成一个序列(Iterator)，此操作发生在reduce端，
+所以势必会将所有的数据通过网络进行传输，造成不必要的浪费。同时如果数据量十分大，可能还会造成OutOfMemoryError。
+==============kafka 重启是否会导致数据丢失
+不会 因为kafka会做持久化
+========spark streaming 重启是否会导致数据丢失
+Spark Streaming和Kafka整合是如何保证数据零丢失 中有详细的讲解
+===========讲一讲checkpoint
+checkpoint的意思就是建立检查点,类似于快照,例如在spark计算里面 计算流程DAG特别长,服务器需要将整个DAG计算完成得出结果,但是如果在这很长的计算流程中突然中间算出的数据丢失了,
+spark又会根据RDD的依赖关系从头到尾计算一遍,这样子就很费性能,当然我们可以将中间的计算结果通过cache或者persist放到内存或者磁盘中,但是这样也不能保证数据完全不会丢失,
+存储的这个内存出问题了或者磁盘坏了,也会导致spark从头再根据RDD计算一遍,所以就有了checkpoint,
+其中checkpoint的作用就是将DAG中比较重要的中间数据做一个检查点将结果存储到一个高可用的地方(通常这个地方就是HDFS里面)

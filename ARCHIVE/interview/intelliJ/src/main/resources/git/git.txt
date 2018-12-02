@@ -1,0 +1,8 @@
+Java面试：Git远程删除文件
+
+只删本地
+rm tmp.txt
+只删远程
+git rm --cached tmp.txt
+本地远程一起删
+git rm tmp.txt
