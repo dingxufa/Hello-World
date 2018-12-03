@@ -1,0 +1,316 @@
+====object类的方法
+getClass  hashCode  equals  clone toString wait  notify  notifyall  finalize
+
+接口中只有 常量  和抽象方法
+常量都是public staic final
+方法都是  public abstarct
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + id;
+		return result;
+	}
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		Student other = (Student) obj;
+		if (id != other.id)
+			return false;
+		return true;
+	}
+======volatile和synchronize的区别
+	=============关于两者的区别===================
+
+    1.volatile本质是在告诉jvm当前变量在寄存器（工作内存）中的值是不确定的，需要从主存中读取；synchronized则是锁定当前变量，
+    只有当前线程可以访问该变量，其他线程被阻塞住；
+    2.volatile仅能使用在变量级别；synchronized则可以使用在变量、方法、和类级别的；
+    3.volatile仅能实现变量的修改可见性，不能保证原子性；而synchronized则可以保证变量的修改可见性和原子性；
+    4.volatile不会造成线程的阻塞；synchronized可能会造成线程的阻塞；
+    5.volatile标记的变量不会被编译器优化；synchronized标记的变量可以被编译器优化。
+
+    红字体部分的原因如下：
+    线程A修改了变量还没结束时,另外的线程B可以看到已修改的值,而且可以修改这个变量,而不用等待A释放锁,因为Volatile 变量没上锁
+
+============thread==
+1.继承thread
+2.实现runnable
+3.实现callable和future接口
+
+stop会产生异常
+destroy是强制终止，不会释放
+
+synchronized方法和synchronized代码块
+class A implements Runable{}
+new Thread(new A(),"").start();
+
+二、停止线程
+1、自然终止:线程体正常执行完毕
+2、外部干涉:
+ 1)、线程类中 定义 线程体使用的标识
+ 2)、线程体使用该标识
+ 3)、提供对外的方法改变该标识
+ 4)、外部根据条件调用该方法即可
+三、阻塞
+1、join :合并线程
+2、yield:暂停自己的线程   static  不一定成功CPU重新分给它还是会执行
+3、sleep:休眠，不释放锁
+  1)、与时间相关:倒计时
+  2)、模拟网络延时
+
+public class JoinDemo01 extends Thread {
+
+	/**
+	 * @param args
+	 * @throws InterruptedException
+	 */
+	public static void main(String[] args) throws InterruptedException {
+		JoinDemo01 demo = new JoinDemo01();
+		Thread t = new Thread(demo); //新生
+		t.start();//就绪
+		//cpu调度 运行
+		for(int i=0;i<1000;i++){
+			if(50==i){
+				t.join(); //main阻塞... main线程阻塞，t执行完后，再执行main
+			}
+			System.out.println("main...."+i);
+		}
+	}
+	@Override
+	public void run() {
+		for(int i=0;i<1000;i++){
+			System.out.println("join...."+i);
+		}
+	}
+}
+============= 生产者消费者模式 信号灯
+ 信号灯法
+一、 wait() :等待，释放锁   sleep 不释放锁
+二、notify()/notifyAll():唤醒
+  与 synchronized 一起使用
+  wait():释放锁  sleep()不释放锁
+  生产者消费者模式
+  this.notify(); //唤醒在当前对象等待池中等待的第一个线程。notifyAll叫醒所有在当前对象等待池中等待的所有线程。
+sleep是 线程方法  不会释放锁
+wait是object的方法
+
+同步:对同一份资源
+synchronized(引用类型变量|this|类.class){
+}
+修饰符 synchronized 方法的签名{
+	方法体
+}
+================net
+基于tcp: 面向连接 安全 可靠 效率低 ，类似于打电话
+一、面向连接:  请求-相应 Request --Response
+二、Socket编程
+1、服务器: ServerSocket
+2、客户端: Socket
+
+（UDP以数据驱动，数据去找服务器）
+UDP：以数据为中心   非面向连接  不安全 数据可能丢失  效率高
+一、类 DatagramSocket DatagramPacket
+1、客户端：
+   1)、创建客户端   DatagramSocket  类  +指定端口  （udp的端口）
+   2)、准备数据  字节数组
+   3)、打包  DatagramPacket +服务器地址 及端口
+   4)、发送
+   5)、释放资源
+
+2、服务器端：
+   1)、创建 服务端  DatagramSocket  类  +指定端口
+   2)、准备接受容器 字节数组  封装 DatagramPacket
+   3)、包 接受数据
+   4)、分析
+   5)、释放资源
+
+==========io
+========================
+Class<?> clazz = Class.forName(path);
+//对象是表示或封装一些数据，一个类被加载后，JVM 会创建一个对应类的Class对象，类的整个
+//结构信息会放到对应的Class对象中，这个Class对象就像一面镜子一样，通过这面镜子我们可以看到对应类的全部信息
+//一个类只对应一个Class对象
+//获取类的名字
+System.out.println(clazz.getName());//包名+类名  practice20171112.reflection.bean.User
+System.out.println(clazz.getSimpleName());//类名 User
+//获取属性信息
+    //Field[] fields = clazz.getFields();//只能获取public的field
+    Field[] fields = clazz.getDeclaredFields();//获得所有的field
+    //Field f = clazz.getField("uname");
+    Field f = clazz.getDeclaredField("uname");
+    for (Field temp : fields) {
+        System.out.println("属性 "+temp);
+    }
+    /*
+     属性 private int practice20171112.reflection.bean.User.id
+    属性 private int practice20171112.reflection.bean.User.age
+    属性 private java.lang.String practice20171112.reflection.bean.User.uname
+     */
+
+    //获取方法信息
+    Method[] method = clazz.getDeclaredMethods();
+    Method m01 = clazz.getDeclaredMethod("getUname", null);
+    //如果方法有参则必须传递参数类型对应的class对象  因为方法如果有重载可以通过参数类型区分到底是哪个方法
+    Method m02 = clazz.getDeclaredMethod("setUname", String.class);
+    for (Method m : method) {
+        System.out.println("方法："+m);
+    }
+    /*方法：public int practice20171112.reflection.bean.User.getId()
+    方法：public java.lang.String practice20171112.reflection.bean.User.getUname()
+    方法：public void practice20171112.reflection.bean.User.setAge(int)
+    方法：public void practice20171112.reflection.bean.User.setUname(java.lang.String)
+    方法：public int practice20171112.reflection.bean.User.getAge()
+    方法：public void practice20171112.reflection.bean.User.setId(int)
+    */
+
+
+    //获取构造器信息
+    Constructor[] constructors =    clazz.getDeclaredConstructors();
+    Constructor c = clazz.getDeclaredConstructor(null);
+    System.out.println("c: " + c);
+    //c: public practice20171112.reflection.bean.User()
+    Constructor d = clazz.getDeclaredConstructor(int.class,int.class,String.class);
+    System.out.println("d: " + d);
+    //d: public practice20171112.reflection.bean.User(int,int,java.lang.String)
+
+
+    for (Constructor temp : constructors) {
+        System.out.println("构造器："+ temp);
+    }
+    /*构造器：public practice20171112.reflection.bean.User()
+    构造器：public practice20171112.reflection.bean.User(int,int,java.lang.String)
+     */
+
+     Class<User> clazz = (Class<User>) Class.forName(path);
+        //通过反射API调用构造方法，构造对象
+        //其实是调用了user的无参构造方法
+        //Javabean必须要有无参构造器
+        User u = clazz.newInstance();
+
+        Constructor<User> c = clazz.getDeclaredConstructor(int.class,int.class,String.class);
+
+        User u2 =  c.newInstance(1001,18,"丁丁");
+        System.out.println(u2.getUname());//丁丁
+
+
+        //通过反射API调用普通方法
+        User u3 = clazz.newInstance();
+        Method method = clazz.getDeclaredMethod("setUname", String.class);
+        method.invoke(u3, "张三");
+        System.out.println("u3:"+u3.getUname()); //u3:张三
+
+
+        //通过反射API操作属性
+        Field f = clazz.getDeclaredField("uname");
+        User u4 = clazz.newInstance();
+        /*
+        f.set(u4, "u4");
+        System.out.println(u4.getUname());
+        //.User with modifiers "private"
+         f是直接操作了属性
+        */
+
+        f.setAccessible(true);//这个属性不需要作安全检查，可以直接访问，私有方法也可与这样
+        f.set(u4, "李四");//通过反射直接写属性的值
+        System.out.println("u4:"+u4.getUname());//通过反射直接读属性的值
+        //u4:李四
+
+JVM核心之JVM运行和类加载过程===================================
+public class Demo01 {
+	static{
+		System.out.println("静态初始化Demo01");
+	}
+	public static void main(String[] args) {
+		System.out.println("Demo01的main方法");
+		A a = new A();
+		System.out.println(A.width);
+		A a2 = new A();
+		/*
+		静态初始化Demo01
+		Demo01的main方法
+		静态初始化类A_Father
+		静态初始化类A
+		创建A类对象
+		300
+		创建A类对象 // 类加载初始化只有一次
+		*/
+	}
+}
+class A extends A_Father{
+	public static int width=100;
+	static{
+		System.out.println("静态初始化类A");
+		width=300;
+	}
+	public A(){
+		System.out.println("创建A类对象");
+	}
+}
+class A_Father{
+	static{
+		System.out.println("静态初始化类A_Father");
+	}
+}
+
+
+==JVM核心机制_深入类加载器_层次结构(三种类加载器)_代理加载模式_双亲委派机制
+这种委托机制很安全
+比如你自己定义java.lang.string，会一直委托到引导类加载器，引导类加载器发现自己的包下有对应的类，就会加载这个类（即系统自己的类）
+，这样你自定义的java.lang.string就永远不会被加载
+System.out.println(ClassLoader.getSystemClassLoader());
+System.out.println(ClassLoader.getSystemClassLoader().getParent());
+System.out.println(ClassLoader.getSystemClassLoader().getParent().getParent());
+/*
+sun.misc.Launcher$AppClassLoader@73d16e93  应用加载器
+sun.misc.Launcher$ExtClassLoader@15db9742 扩展加载其
+null*/		//引导类加载器原生代码实现Java获取不到
+
+System.out.println(System.getProperty("java.class.path"));
+//D:\WorkSpace\MyEclipse2016\TestJavassist\bin;D:\software\lib\javassist\javassist.jar
+
+同一个类被不同加载器加载，jvm认为是不相同的类
+当你需要动态加载资源时候：
+1.系统类加载器或叫应用类加载器
+2.当前类加载器
+3.当前线程类加载器， Thread.currentThread().getContextClassLoader()
+tomcat与双亲委托机制相反，首先尝试加载某个类，找不到再代理给父类
+
+
+================
+public void test(){
+		int a =3;
+		//匿名内部类 (接口式)同时由于内部类定义在方法中也是方法内部类
+		Runnable runnable = new Runnable() {
+			@Override
+			public void run() {
+			}
+		};//
+
+		//匿名内部类 继承式
+		Car car = new Car(){
+			@Override
+			public void run() {
+				System.out.println("子类的车跑");
+				System.out.println(a);
+			}
+		};
+		car.run();
+		test02(new Car(){
+			@Override
+			public void run() {
+				System.out.println("参数类匿名内部类，车在跑");
+			}
+		});
+	}
+
+class Car{
+	public void run(){
+		System.out.println("汽车跑");
+	}
+}

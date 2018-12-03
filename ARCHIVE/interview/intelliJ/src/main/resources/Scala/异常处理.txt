@@ -1,0 +1,5 @@
+###########Scala compile server
+    Error: Could not create the Java Virtual Machine.
+    Error: A fatal exception has occurred. Program will exit
+在Scala compiler server
+java param   -server -Xmx64m

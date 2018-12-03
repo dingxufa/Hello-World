@@ -1,0 +1,46 @@
+1）hive 支持 not in 吗？
+不支持，可以用left join 实现此功能。
+
+2）Hive 有哪些方式保存元数据，各有哪些优缺点？
+1.存储于内存数据库derby，此方法只能开启一个hive客户端，不推荐使用。
+2.存储于mysql数据库，可以多客户端连接，推荐使用。
+分为本地mysql数据库，远程mysql数据库，但是本地的mysql数据用的比较多，因为本地读写速度都比较快。
+
+3）hive 如何优化？
+1.join优化，尽量将小表放在join的左边，如果一个表很小可以采用mapjoin；
+2.排序优化，order by 一个reduce效率低，distirbute by +sort by 也可以实现全局排序；
+3.使用分区，查询时可减少数据的检索，从而节省时间。
+hive最终都会转化为mapreduce的job来运行，要想hive调优，实际上就是mapreduce调优，可以有下面几个方面的调优：解决收据倾斜问题，
+减少job数量，设置合理的map和reduce个数，对小文件进行合并，优化时把我整体，单个task最优不如整体最优，按照一定规则分区。
+
+4）hive 如何权限控制？
+Hive的权限需要在hive-site.xml文件中设置才会起作用，配置默认的是false。需要把hive.security.authorization.enabled设置为true，
+并对不同的用户设置不同的权限，例如select ,drop等的操作。
+<configuration>
+        <property>
+                <name>javax.jdo.option.ConnectionURL</name>
+                <value>jdbc:mysql://server0:3306/hivedb?createDatabaseIfNotExist=true&amp;useSSL=false</value>
+        </property>
+        <property>
+                <name>javax.jdo.option.ConnectionDriverName</name>
+                <value>com.mysql.jdbc.Driver</value>
+        </property>
+        <property>
+                <name>javax.jdo.option.ConnectionUserName</name>
+                <value>root</value>
+        </property>
+        <property>
+                <name>javax.jdo.option.ConnectionPassword</name>
+                <value>root123</value>
+        </property>
+</configuration>
+
+
+5）hive 能像关系数据库那样，建多个库吗？
+可以建立多个库，多库多表都支持。
+
+6）hive 中的压缩格式 RCFile、 TextFile、 SequenceFile 各有什么区别？
+TextFile：默认格式，数据不做压缩，磁盘开销大，数据解析开销大。
+SequenceFile：Hadoop API提供的一种二进制文件支持，使用方便，可分割，可压缩，支持三种压缩，NONE，RECORD，BLOCK。
+RCFILE：是一种行列存储相结合的方式。首先，将数据按行分块，保证同一个record在同一个块上，避免读一个记录读取多个block。
+        其次，块数据列式存储，有利于数据压缩和快速的列存取。数据加载的时候性能消耗大，但具有较好的压缩比和查询响应。

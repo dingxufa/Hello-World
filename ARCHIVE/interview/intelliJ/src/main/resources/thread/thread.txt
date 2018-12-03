@@ -1,0 +1,153 @@
+java.util.concurrent.*
+1.atomic  基本数据类型的atomic
+2.locks   ReentrantLock   ReentrantReadWriteLock
+3.各种并发类 Executors  CopyOnWriteArrayList CountDownLatch  ArrayBlockingQueue  ConcurrentLinkedDeque  ConcurrentHashMap
+
+ ThreadFactory factory = Executors.defaultThreadFactory();
+        factory.newThread(new Runnable(...)).start();
+
+sleep:Thread类的静态方法 ，调用该方法的线程暂停运行 ，不释放锁
+wait:object方法，，调用该方法的线程暂停运行 ，释放锁，进入等待队列，等待其他线程的 notify notifyall interrupt 或wait方法超时唤醒
+notify等同于notifyall，都是object方法：只不过notify只唤醒一个线程，notifyall唤醒所有线程
+1、join :合并线程
+class{
+    public static volatile int i = 0;
+    main{
+        new Thread(run(){ for.. i++}).start().join();
+        system.out.println(i);
+    }
+}
+如果没有join，i为0或者很小的数，有join，等线程执行完main再执行
+2、yield:暂停自己的线程   static  不一定成功CPU重新分给它还是会执行
+stop会产生异常
+destroy是强制终止，不会释放
+
+synchronized void method(){}  等价于
+void method(){ synchronized(this){...}}
+每个实例拥有一个独立的锁
+static synchonized void method(){}
+static void mehtod(){ synchronized(Class.class){}}
+使用该类的类对象的锁来执行互斥，只能有一个线程运行
+
+所有实例拥有一个等待队列，执行wait后，进入该队列
+
+
+
+============single threaded execution
+多线程访问ShareResource的unsafeMethod  unsafeMethod加synchronize
+死锁满足条件：
+1.存在多个ShareResource
+2.线程在持有某个ShareResource角色的锁时，还想获取其他ShareResource角色的锁
+3.获取ShareResource角色的锁的顺序不固定（ShareResource角色是对称的）
+（两个人 一碟面  一个叉 一个勺  叉和勺是ShareResource，拿到叉和勺才能吃面）
+只要破坏上面任一条件，就可以预防死锁发生
+
+1.获取锁花费时间
+2.线程冲突引起的等待 阻塞时间
+
+hashtable中的所有方法都采用single threaded execution模式
+基本类型、引用类型的赋值和引用是原子操作
+Long double 的赋值和引用不是原子操作
+long和double在线程间共享，需要将其放入synchronized操作中，或者是声明方法为volatile
+java.util.concurrent.atomic 提供了原子操作
+
+semaphore：permits    acquire:获取可用资源，无则阻塞   release   acquire和release必须成对调用
+single threaded execution模式用于确保某个区域只能由一个线程执行---》semaphore:确保某个区域只能由N个线程执行
+
+reentrantLock  .lock() 和 .unlock() 必须成对出现 .unlock()在finally{}
+Lock lock = new ReentranLock();
+lock.lock();
+try{
+    //do something
+}finally{
+    lock.unlock();
+}
+公平锁和非公平锁
+public ReentrantLock() {
+    sync = new NonfairSync();
+}
+
+public ReentrantLock(boolean fair) {
+    sync = fair ? new FairSync() : new NonfairSync();
+}
+ReentrantLock的内部类Sync继承了AQS，分为公平锁FairSync和非公平锁NonfairSync。
+
+公平锁：线程获取锁的顺序和调用lock的顺序一样，FIFO；
+非公平锁：线程获取锁的顺序和调用lock的顺序无关，全凭运气。
+ReentrantLock默认使用非公平锁是基于性能考虑，公平锁为了保证线程规规矩矩地排队，需要增加阻塞和唤醒的时间开销。
+如果直接插队获取非公平锁，跳过了对队列的处理，速度会更快。
+
+abstract static class Sync extends AbstractQueuedSynchronizer
+采用组合模式把lock和unlock方法委托给同步器完成。
+Lock lock = new ReentrantLock();
+Condition condition = lock.newCondition();
+lock.lock();
+try {
+  while(条件判断表达式) {
+      condition.wait();
+  }
+ // 处理逻辑
+} finally {
+    lock.unlock();
+}
+
+那么Doug lea是如何实现锁的非公平性呢？
+我们假设这样一个场景：
+
+持有锁的线程A正在running，队列中有线程BCDEF被挂起并等待被唤醒；
+在某一个时间点，线程A执行unlock，唤醒线程B；
+同时线程G执行lock，这个时候会发生什么？线程B和G拥有相同的优先级，这里讲的优先级是指获取锁的优先级，同时执行CAS指令竞争锁。
+如果恰好线程G成功了，线程B就得重新挂起等待被唤醒。
+
+
+在公平锁中，每当线程执行lock方法时，如果同步器的队列中有线程在等待，则直接加入到队列中。
+场景分析：
+
+持有锁的线程A正在running，对列中有线程BCDEF被挂起并等待被唤醒；
+线程G执行lock，队列中有线程BCDEF在等待，线程G直接加入到队列的对尾。
+所以每个线程获取锁的过程是公平的，等待时间最长的会最先被唤醒获取锁。
+
+
+重入锁实现
+重入锁，即线程可以重复获取已经持有的锁。在非公平和公平锁中，都对重入锁进行了实现。
+如果没有线程持有锁，则自己获取锁，state由0变1，把自己设为当前锁的独占线程，如果自己已经持有锁，则，state+1，
+如果别的线程持有锁，自己阻塞
+    if (current == getExclusiveOwnerThread()) {
+        int nextc = c + acquires;
+        if (nextc < 0)
+            throw new Error("Maximum lock count exceeded");
+        setState(nextc);
+        return true;
+    }
+条件变量Condition
+
+条件变量很大一个程度上是为了解决Object.wait/notify/notifyAll难以使用的问题。
+
+public class ConditionObject implements Condition, java.io.Serializable {
+    /** First node of condition queue. */
+    private transient Node firstWaiter;
+    /** Last node of condition queue. */
+    private transient Node lastWaiter;
+    public final void signal() {}
+    public final void signalAll() {}
+    public final void awaitUninterruptibly() {}
+    public final void await() throws InterruptedException {}
+}
+Synchronized中，所有的线程都在同一个object的条件队列上等待。而ReentrantLock中，每个condition都维护了一个条件队列。
+每一个Lock可以有任意数据的Condition对象，Condition是与Lock绑定的，所以就有Lock的公平性特性：如果是公平锁，
+    线程为按照FIFO的顺序从Condition.await中释放，如果是非公平锁，那么后续的锁竞争就不保证FIFO顺序了。
+Condition接口定义的方法，await对应于Object.wait，signal对应于Object.notify，signalAll对应于Object.notifyAll。
+特别说明的是Condition的接口改变名称就是为了避免与Object中的wait/notify/notifyAll的语义和使用上混淆。
+
+=========guarded suspension
+
+
+
+==========read-write lock
+
+
+
+============immutable
+Immutable角色是一个类，字段值不可被修改，也不存在修改字段内容的方法
+
+============thread-specific storage

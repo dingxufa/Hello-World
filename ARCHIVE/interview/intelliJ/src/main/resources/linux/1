@@ -1,0 +1,158 @@
+%%
+Linux shell if [ -n ] 正确使用方法
+
+if [ str1 = str2 ]　　　　　  当两个串有相同内容、长度时为真
+if [ str1 != str2 ]　　　　　 当串str1和str2不等时为真
+if [ -n str1 ]　　　　　　 当串的长度大于0时为真(串非空)
+if [ -z str1 ]　　　　　　　 当串的长度为0时为真(空串)
+if [ str1 ]　　　　　　　　 当串str1为非空时为真
+
+========================================以条件表达式作为 if条件=============================
+
+    传统if 从句子——以条件表达式作为 if条件
+if [ 条件表达式 ]
+then
+ command
+ command
+ command
+else
+ command
+ command
+fi
+
+   条件表达式
+
+文件表达式
+if [ -f  file ]    如果文件存在
+if [ -d ...   ]    如果目录存在
+if [ -s file  ]    如果文件存在且非空
+if [ -r file  ]    如果文件存在且可读
+if [ -w file  ]    如果文件存在且可写
+if [ -x file  ]    如果文件存在且可执行
+
+整数变量表达式
+if [ int1 -eq int2 ]    如果int1等于int2
+if [ int1 -ne int2 ]    如果不等于
+if [ int1 -ge int2 ]       如果>=
+if [ int1 -gt int2 ]       如果>
+if [ int1 -le int2 ]       如果<=
+if [ int1 -lt int2 ]       如果<
+
+
+   字符串变量表达式
+If  [ $a = $b ]                 如果string1等于string2
+                                字符串允许使用赋值号做等号
+if  [ $string1 !=  $string2 ]   如果string1不等于string2
+if  [ -n $string  ]             如果string 非空(非0），返回0(true)
+if  [ -z $string  ]             如果string 为空
+if  [ $sting ]                  如果string 非空，返回0 (和-n类似)
+
+
+    条件表达式引用变量要带$
+
+if [ a = b ] ;then
+echo equal
+else
+echo no equal
+fi
+[macg@machome ~]$ sh test.sh
+input a:
+5
+input b:
+5
+no equal  （等于表达式没比较$a和$b,而是比较和a和b,自然a!=b)
+改正：
+
+if [ $a = $b ] ;then
+echo equal
+else
+echo no equal
+fi
+[macg@machome ~]$ sh test.sh
+input a:
+5
+input b:
+5
+equal
+
+
+%%运行一个脚本时  ./bin/script.sh   和  /bin/script.sh 两种方式有何区别？
+带点号的，是在当前bash进程中运行，不带点号的是在一个新的bash子进程中运行
+
+%%脚本中直接定义一个变量 a=3  和 export a=3 有何区别
+a=3在所运行的bash进程环境中有效
+export a=3 在所运行的bash进程和父进程中都有效
+
+%%shell脚本中如何定义一个函数？ 函数可以返回一个对象么？
+示例：
+function fSum()
+ {
+   echo $1,$2;
+   return $(($1+$2));
+ }
+函数可以有返回值
+
+%%shell脚本中如何引用另一个shell脚本？
+方法一:使用source
+#!/bin/bash
+echo 'your are in second file'
+source first
+方法二:使用.
+#!/bin/bash
+echo 'your are in second file'
+. first
+方法三:使用sh
+#!/bin/bash
+echo 'your are in second file'
+sh  first
+
+%%shell脚本中的函数如何获取输入参数？
+可以通过$n， n用数字代替，比如$3表示获取第三个输入参数
+还可以用$@   $*  获取所有输入参数
+
+%%shell脚本中如何获取一条命令的执行结果，并将其赋值给一个变量？
+示例：
+res = `ls /`
+
+%% $?  $0  $* $@分别是什么含义？
+$？  获取上一条命令的执行结果
+$0   获取第一个输入参数
+$* $@  获取所有输入参数
+
+%%编写一个脚本，将/home/hadoop/test/下的符合"access.log.*"文件名的文件移动到/home/hadoop/test/toupload下，并上传到hdfs指定目录中/data/今日日期/
+参见《hdfs定时上传shell的案列》
+
+%%使用crontab来定时执行上述脚本
+参见《day07_hdfs定时上传shell的案列》
+*/1 * * * * sh /export/servers/shell/uploadFile2Hdfs.v2.sh
+*/1 * * * * sh  source /etc/profile;sh /export/servers/shell/uploadFile2Hdfs.v1.sh
+
+# 编辑命令是crontab -e
+# 查看命令是crontab -l
+
+%%编写一个脚本，通过读取slaves配置文件，批量自动启动3个服务器上的zookeeper
+while read line
+do
+    ssh $line "source /etc/profile; /home/hadoop/apps/zookeeper/bin/zkServer.sh start"
+done < slaves.txt
+
+<<EOF
+
+EOF
+
+%%编写一个程序，实现分布式系统中的服务器动态上下线和客户端实时感知并获取新的在线服务器列表
+参见《day03_zookeeper应用案例》
+
+%%编写一个分布式系统，实现从一个节点上发布一个jar包到另外几个节点上，并成功启动jar包内的程序，jar包内的程序是输出当前时间到文件中
+
+%%什么是RPC？简述其底层的实现机制
+RPC：远程过程调用，简单来说，就是进程间的调用
+底层的实现：网络通信+序列化+反射+动态代理
+
+
+%%你所知道的RPC框架有哪些？
+HADOOP RPC
+dubbo
+mina
+
+

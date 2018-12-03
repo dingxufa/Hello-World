@@ -1,0 +1,443 @@
+spark
+
+RDD创建两种方式
+1.driver程序的数据集生成
+    val rdd = sc.parallelize(List(1,2) ,2)   Array(1,2)  Seq(1,2)
+        2--分区  一般RDD会为每个分区运行一个task
+2.外部数据集生成
+    val rdd = sc.textFile("hdfs://sdf.txt") 
+    val rdd = sc.dataStreamFiles("hdfs://path/part-0000")  // (path/part-0000,文件内容)
+    
+RDD的两种操作
+1.transformation  产生一个新的RDD
+2.action      
+
+cache等同于persist ，但persist更广泛，可以通过参数设置持久化到内存或磁盘，但cache只局限于持久化到内存
+
+map：输入一个RDD,输出也是一个RDD
+flatMap:输入一个RDD，输出一个集合，集合成员会被展开返回一个数组
+
+val wordMap = (word:String)=>(word,1)   这是function
+
+所有RDD的函数调用，虽然代码上看起来是在driver程序中运行的，但实际计算都不在本地 
+
+spark程序之间的调度
+1.静态分配资源：每个spark程序都分配一个最大可用的资源数量，而且在程序运行的整个过程都持有它
+2.动态分配：程序可能会在不适用资源的时候将资源还给集群，需要的时候再从集群里申请  动态资源分配的粒度是executor，即增加或减少执行器 只能在yarn模式下
+spark.dynamicAllocation.*
+spark.dynamicAllocation.enabled=true
+还必须使用一个外部的shuffle服务，保存执行器输出的shuffle文件，使执行器可以安全移除
+动态资源分配策略：
+    -1  请求策略  当程序有task等待调度，会一直循环请求执行器资源  1 2 4 8。。。。增长
+    -2  移除策略  当程序的某个执行器处于空闲的时间超过spark.dynamicAllocation.executorTimeout后会被移除
+    
+spark程序内部的调度
+spark程序内部，不同线程提交的job可以并行执行，spark的调度器是线程安全的，默认以FIFO方式运行job
+也可以设置为公平调度，使所有job获得差不多的资源，长job运行，短job也有机会运行
+new SparkConf().setMaster().setAppName().set("spark.scheduler.mode","FAIR")    
+
+
+可以为用户设置调度池，将这个线程提交的所有job归为一组，这个组叫调度池，方便的让一个线程下所有job都在同一用户下
+sc.setLocalProperty("spark.scheduler.pool","")  
+
+
+==================spark内存管理
+1.RDD持久化  （内存不够磁盘顶，爱选内存选内存，爱选磁盘选磁盘）
+rdd.persist(storagelevel) memory_only memory_and_disk  disk_only ....memory_only_ser  memory_and_disk_ser(序列化 节省内存耗CPU)
+rdd.unpersist()
+
+2.共享变量
+----1.广播变量：只读对象，在所有节点缓存一份，创建后更改无意义 val broadcastval = sc.broadcast(Array(1,2))
+----2.计数器：只能增加 
+    sc.accumulator(0,"myAccumulator") ,只有driver程序可以读这个变量，RDD操作中读取是无意义的
+    
+3.=======================容错机制
+根据父RDD的分区是对应一个还是多个子RDD分区
+窄依赖：父分区对应一个子分区            容错时，只要计算丢失的那一块数据，成本小
+宽依赖：父分区对应多个子分区            容错时，多块分区都要重复计算，荣誉数据重算，成本大
+
+spark提供了预写日志，先将数据写入支持容错的文件系统中，然后才对这个数据施加操作
+对于kafka和flume这样的数据源，接收到的数据只在数据被预写到了日志以后，接收器（receiver）才会收到确认消息，已经缓存但还没有保存的数据在driver重启后
+由数据源从上次确认点之后重新再发送一次
+这样，数据要不从日志中恢复，要不由数据源重发，实现了零丢失
+
+master节点失效
+master容错是通过zookeeper来完成的。有多个master，一个是active其他是standby，当active的master异常通过zookeeper选出新的master
+在zookeeper的模式下，恢复期间新任务无法提交，已经运行的任务不受影响
+
+要在conf/spark-env.sh中进行配置
+cnf/spark-env.sh
+        spark.deploy.recoveryMode   ZOOKEEPER
+        spark.deploy.zookeeper.url  192.168.40.145:2181,192.168.40.145:2181,
+        spark.deploy.zookeeper.dir  在zookeeper上的目录
+
+slave节点失效
+worker：异常，将自己启动的executor停止，driver要有相应的程序来重启worker
+executor:异常 driver在超时时间内接到executor报活（statusupdate）driver移除注册的executor，通知workerlaunchExecutor重启executor
+driver:异常   1.恢复检查点记录的元数据块 2.未完成的job重新形成（由于失败而没完成的RDD，将使用恢复的元数据重新生成RDD，然后运行后续的job重新计算）  
+
+
+==================Spark 程序配置加载过程
+Spark程序一般都是由脚本bin/spark-submit来提交的，交互式编程bin/spark-shell其实也是通过它来提交的。通过这种方式启动的Spark程序的加载配置过程如下。
+(1) 设置 SPARK_HOME 的值为bin/spark-submit脚本所在目录的上一级目录。
+(2) 计算配置文件目录，从环境变量 SPARK_CONF_DIR 中读取。如果没有设置，则取默认值${SPARK_HOME}/conf 。
+(3) 执行配置文件目录下的shell脚本配置文件spark-env.sh，设置基本的环境变量。
+(4) 加载配置文件目录下的默认配置文件spark-defaults.conf。
+(5) 读取命令行参数，覆盖前面的默认配置。
+(6) 使用 SparkConf 对象中的选项，覆盖前面的配置。
+上面的加载过程中涉及的Spark程序配置项有两类，一类是第(1)步至第(3)步中使用的环境变
+量，另外一类是第(4)步至第(6)步中加载的Spark属性项。  
+
+
+
+
+
+=================================spark内核讲解
+RDD的特点
+1.是只读的，一旦生成，内容不可修改
+2.可指定缓存到内存中
+3.可通过重新计算得到
+
+一个RDD对象，包含如下5个核心属性。
+1.一个分区列表，每个分区里是RDD的部分数据（或称数据块）。
+2.一个依赖列表，存储依赖的其他RDD。
+3.一个名为 compute 的计算函数，用于计算RDD各分区的值。
+4.分区器（可选），用于键/值类型的RDD，比如某个RDD是按散列来分区。 /** 可选，子类可以重写以指定新的分区方式。Spark支持两种分区方式：Hash和Range*/
+5.计算各分区时优先的位置列表（可选），比如从HDFS上的文件生成RDD时，RDD分区的
+位置优先选择数据所在的节点，这样可以避免数据移动带来的开销。
+
+在Spark中，RDD是有依赖关系的，这种依赖关系有两种类型。
+  窄依赖。依赖上级RDD的部分分区。
+  Shuffle依赖。依赖上级RDD的所有分区。
+以Shuffle依赖为分隔，Task被分成Stage，方便计算时的管理
+
+
+SparkContext 在构造的过程中，已经完成了各项服务的启动 除了初始化各类配置、日志之外，最重要的初始化操作之一是启动Task调度器和DAG调度器
+// 创建并启动Task调度器
+val (sched, ts) = SparkContext.createTaskScheduler(this, master)
+_schedulerBackend = sched
+_taskScheduler = ts
+_dagScheduler = new DAGScheduler(this)
+_heartbeatReceiver.send(TaskSchedulerIsSet)
+// 创建DAG调度器，并引用之前创建的Task调度器之后，
+// 再启动Task调度器
+_taskScheduler.start()
+DAG调度与Task调度的区别是，DAG是最高层级的调度，为每个Job绘制出一个有向无环图
+（简称DAG），跟踪各Stage的输出，计算完成Job的最短路径，并将Task提交给Task调度器来执行。
+而Task调度器只负责接受DAG调度器的请求，负责Task的实际调度执行，所以 DAGScheduler 的
+初始化必须在Task调度器之后。
+
+=============spark SQL================
+hive
+  求交
+  JOIN
+  {LEFT|RIGHT|FULL} OUTER JOIN
+  LEFT SEMI JOIN
+  CROSS JOIN
+
+val sc = new SparkContext().setappname().setmaster()
+val sqlContext = new SQLContext(sc)
+
+创建DataFrame两种方式
+1.从RDD创建，又分两种：
+  a.用Scala反射，代码简洁，但需要提前知道数据格式；
+  b.程序指定，略复杂，但可以运行时指定。
+        // 导入依赖的数据类型
+        import org.apache.spark.sql.Row;
+        import org.apache.spark.sql.types.{StructType, StructField, StringType};
+2.从其他数据源创建。
+    val df = sqlContext.read.json("examples/src/main/resources/people.json")
+    df.show()
+
+a====>
+object SQLDemo {
+  def main(args: Array[String]) {
+    val conf = new SparkConf().setAppName("SQLDemo").setMaster("local").set("spark.testing.memory","2147480000")
+      //.setMaster("spark://server0:7077").set("spark.testing.memory","2147480000")
+    val sc = new SparkContext(conf)
+    val sqlContext = new SQLContext(sc)
+    System.setProperty("user.name","hadoop")
+    val personRdd = sc.textFile("hdfs://server0:9000/person.txt").map(line =>{
+      val fields = line.split(",")
+      Person(fields(0).toLong, fields(1), fields(2).toInt)
+    })
+    import sqlContext.implicits._
+    //包含case class的RDD被隐式转换成DataFrame，注意toDF是DataFrame的方法，而不是RDD的
+    val personDf = personRdd.toDF
+    personDf.registerTempTable("person")
+    sqlContext.sql("select * from person where age >= 20 order by age desc limit 2").show()
+//    +---+-----+---+
+//    | id| name|age|
+//    +---+-----+---+
+//    |  5|   hu| 35|
+//    |  3|zhang| 26|
+//      +---+-----+---+
+    sc.stop()
+  }
+}
+case class Person(id: Long, name: String, age: Int)
+
+
+--------------
+object SQLDemo02 {
+  def main(args: Array[String]) {
+    val conf = new SparkConf().setAppName("SQLDemo02").setMaster("local").set("spark.testing.memory","2147480000")
+    val sc = new SparkContext(conf)
+    val sqlContext = new org.apache.spark.sql.SQLContext(sc)
+    // 一个普通RDD
+    val people = sc.textFile("D:/download/data/person.txt")
+    // 字符串格式的表模式
+    val schemaString = "name age"
+    // 导入依赖的数据类型
+    import org.apache.spark.sql.Row;
+    import org.apache.spark.sql.types.{StructType, StructField, StringType};
+    // 根据字符串格式的表模式创建结构化的表模式，用StructType保存
+    val schema =
+      StructType(
+        schemaString.split(" ").map( fieldName => StructField(fieldName, StringType, true) )
+      )
+    // 将普通RDD的成员转换成Row对象
+    //val rowRDD = people.map(_.split(",")).map(p => Row(p(0), p(1).trim))
+    val rowRDD = people.map(line=>{
+      val fields = line.split(",")
+      Row(fields(0),fields(1).trim)
+    })
+    // 将模式作用到RDD上，生成DataFrame
+    val peopleDataFrame = sqlContext.createDataFrame(rowRDD, schema)
+    // 将DataFrame的内容打印到标准输出
+    peopleDataFrame.show()
+  }
+}
+
+
+
+
+当使用HiveContext时，DataFrame还可以使用 saveAsTable 方法持久化，内容会被保存到存
+储系统中，表信息会保存在数据库中，这样即使程序退出后，其他进程还可以访问它。比如：
+val sqlContext = new org.apache.spark.sql.hive.HiveContext(sc)
+val df = sqlContext.read.json("examples/src/main/resources/people.json")
+df.saveAsTable("people")
+
+
+spark sql 的性能调优
+最重要的性能优化方法是，使用内存来缓存数据，调用的方法是 sqlContext.cacheTable("tableName") 或 dataFrame.cache() 。
+此外，调用 sqlContext.uncacheTable("tableName") 可以从内存中移除数据。
+内存缓存可以通过如下两个系统配置来控制。
+  spark.sql.inMemoryColumnarStorage.compressed 。默认值为 true ，表示开启压缩。
+  spark.sql.inMemoryColumnarStorage.batchSize 。缓存块大小，增加它可以提升内存利用率，但也会增加内存溢出的风险。
+
+
+=========spark SQL运行原理与运行机制====================
+Spark SQL是Spark Core之上的一个模块，所有SQL操作最终都通过Catalyst翻译成类似普通
+Spark程序一样的代码，被Spark Core调度执行，其过程也有Job、Stage、Task的概念
+
+Catalyst 执行优化器
+Catalyst最主要的数据结构是树，所有SQL语句都会用树结构来存储，树中的每个节点有一个
+类（class），以及0或多个子节点
+这里以表达式 x+(1+2) 为例介绍一下，其中每个元素都对应一个类型。这个表达式总共有3
+个类型，具体如下所示。
+  Literal(value: Int) 。一个整数常量类型， 1 和 2 都是这个类型。
+  Attribute(name: String) 。表示一个列属性，比如 x 。
+  Add(left: TreeNode, right: TreeNode) 。表达式类型，用于求和。
+所以，表达式最终在Scala中的定义是：
+Add(Attribute(x), Add(Literal(1), Literal(2)))
+
+Catalyst另外一个非常重要且基础的概念是规则。基本上，所有优化都是基于规则的。可以
+用规则对树进行操作，树中的节点是只读的，所以树也是只读的。规则中定义的函数可能实现从
+一棵树转换成一棵新树。
+tree.transform {
+case Add(Literal(c1), Literal(c2)) => Literal(c1+c2)
+case Add(left, Literal(0)) => left
+case Add(Literal(0), right) => right
+}
+
+未辨识逻辑计划树----------》物理计划树------》抽象语法树，然后Scala编译器直接生成字节码
+使用quasiquotes之后，只需要写一些转换函数就可以生成抽象语法树，示例代码如下：
+def compile(node: Node): AST = node match {
+    case Literal(value) => q"$value"
+    case Attribute(name) => q"row.get($name)"
+    case Add(left, right) => q"${compile(left)} + ${compile(right)}"
+}
+
+通过上面的转换之后，原始的SQL表达式 (x+y)+1 会翻译成Scala代码：
+( row.get(‘x’) + row.get(‘y’) ) + 1
+
+
+
+=============spark流式计算===============
+Spark Streaming基于Spark核心，具备可扩展性、高吞吐量、自动容错等特性
+Spark Streaming接收实时数据，按周期将数据分成多批次（batch），按批次提交给Spark核心来调度计算
+Spark Streaming使用的数据抽象是 DStream （discretized stream），它表示连续的数据流，但内部其实是通过RDD序列来存储的
+
+
+object StateFulWordCount {
+ //Seq这个批次某个单词的次数
+ //Option[Int]：以前的结果
+  //分好组的数据
+  val updateFunc = (iter: Iterator[(String, Seq[Int], Option[Int])]) => {
+    //iter.flatMap(it=>Some(it._2.sum + it._3.getOrElse(0)).map(x=>(it._1,x)))
+    //iter.map{case(x,y,z)=>Some(y.sum + z.getOrElse(0)).map(m=>(x, m))}
+    //iter.map(t => (t._1, t._2.sum + t._3.getOrElse(0)))
+    iter.map{ case(word, current_count, history_count) => {
+      println("====word:"+word+" current_count:"+current_count+" history_count:"+history_count)
+      (word, current_count.sum + history_count.getOrElse(0))
+    }
+    }
+  }
+  def main(args: Array[String]) {
+    LoggerLevels.setStreamingLogLevels()
+    //StreamingContext
+    val conf = new SparkConf().setAppName("StateFulWordCount").setMaster("local[2]").set("spark.testing.memory","2147480000")
+    val sc = new SparkContext(conf)
+    //updateStateByKey必须设置setCheckpointDir
+    sc.setCheckpointDir("d://ck")
+    val ssc = new StreamingContext(sc, Seconds(5))
+    val ds = ssc.socketTextStream("server0", 8888)
+    //DStream是一个特殊的RDD
+    //hello tom hello jerry
+    val result = ds.flatMap(_.split(" ")).map((_, 1)).updateStateByKey(updateFunc, new HashPartitioner(sc.defaultParallelism), true)
+    result.print()
+    ssc.start()
+    ssc.awaitTermination()
+  }
+}
+//====word:hello current_count:CompactBuffer() history_count:Some(2)
+//====word:hi current_count:CompactBuffer(1) history_count:None
+//-------------------------------------------
+//Time: 1522770170000 ms
+//-------------------------------------------
+//(hello,2)
+//(hi,1)
+DStream （discretized stream）是Spark Streaming的核心抽象，DStream 表示连续的数据流，要么是从数据源接收到的输入数据流，要求是经过计算产生
+的新数据流。 DStream 的内部是一个RDD序列，每个RDD对应一个计算周期。比如，在上面的
+WordCount示例中，每5秒一个周期，那么每5秒的数据都分别对应一个RDD
+所有应用在 DStream 上的操作，都会被映射为对 DStream 内部的RDD上的操作
+
+
+
+DStream 操作两类操作
+1.Transformation操作。类似于RDD的Transformation，对一个 DStream 进行计算，输出新
+的 DStream 。
+2.output操作。类似于RDD的Action操作，将 DStream 输出至外部系统，比如文件系统、数
+据库或BI报表系统
+
+ DStream 内部其实是RDD序列，所有的 DStream 操作最终都转换为RDD操作。
+DStream 有一些与RDD类似的基础属性：
+  依赖的其他 DStream 列表；
+  生成RDD的时间间隔；
+  一个名为 compute 的计算函数，用于生成RDD，类似于RDD的 compute 。
+DStream 的操作分为两类，一类是Transformation操作，对应RDD的Transformation操作
+DStream 另外一类操作是Output操作，Output操作才会触发 DStream 的实际执行，作用非常
+类似于RDD的Action操作 
+
+
+ transform
+DStream 内部其实是RDD序列， transform 提供了直接操作 DStream 内部RDD的方法，对
+于那些 DStream 没有提供的RDD操作，可以通过 transform 调用
+// rdd2是一个已经存在的RDD
+val joinedDStream = d.transform(rdd => {
+rdd.join(rdd2)
+})
+- UpdateStateByKey
+
+  窗口（window）操作
+流式计算是周期性进行的，有时除了处理当前周期的数据，还需要处理最近几个周期的数据，
+这时就需要窗口操作方法了。我们可以设置数据的滑动窗口，将数个原始 Dstream 合并成一个窗口 DStream ，
+
+窗口通过如下两个参数来确定。
+窗口长度。即窗口跨越的周期次数，上图示例中是3。
+滑动区间。从当前窗口到下一个窗口间隔的周期数量，
+
+Output 操作
+Output操作将 DStream 结果输出至外部系统
+    print() 。调试测试用，打印 DStream 中各RDD的头部10个成员， print 也可以添加一个参数指定输出的头部成员数量，比如 print(30) 。
+  saveAsTextFiles(prefix, [suffix]) 。保存为文本文件、本地磁盘系统或HDFS，文件名格式是“prefix-TIME_IN_MS[.suffix]”。
+  saveAsObjectFiles(prefix, [suffix]) 。保存为SequenceFile格式，文件名格式同上。
+  foreachRDD(func) 。最灵活的Output操作，传入一个函数，直接作用在RDD上。传入的函数可以实现任意功能，比如写文件、写DB，或者通过网络发送出去。
+需要注意的是，func 是在调用Spark流式计算程序的Driver进程中执行的，但 func 中一般会调用RDD的Action操作，那却是在worker中执行的。
+                    
+窗口函数和 updateStateByKey 默认会自动持久化，不需要调用persist() ，因为数据的确会被多次使用。对于从网络接收数据的输入 DStream 
+（比如Kafka、Flume、sockets等），默认的持久化级别是复制数据到两个节点上，以确保容错能力。
+Spark从1.2版开始，支持WAL（Write Ahead Logs）。WAL是一种避免数据丢失的方法，开启之后，所有收到的数据在处理之前都会先写到检查点目录下，
+这样可以确保在Driver恢复期间数据不丢失。
+设置 spark.streaming.receiver.writeAheadLog.enable 为 true 可以开启此功能，但代价是降低了数据接收的吞吐量，不过可以采用并发接收的方式来降低影响                    
+开启了WAL，接收数据时的复制机制可以关闭了，因为两者的目标是相同的；关闭复制的方法是
+设置输入 DStream 的存储级别为 StorageLevel.MEMORY_AND_DISK_SER 
+
+
+
+Scheduling Delay和Processing Time（如图6-8所示）。这两者加起来就是Spark Streaming一次周期计算的总时间
+
+
+
+==============spark性能调优
+1.每个批次的处理时间尽可能短；
+    一是增加数据接收的并发数量默认每个InputDStream 都只会创建一个接收器，运行在某个节点上，我们可以创建多个InputDStream ，让它们接收不同的数据分区，
+        以实现并行接收。比如一个接收两个topic的Kafka InputDStream 可以优
+        化成两个InputDStream ，各接收一个topic，然后再合并
+    二是数据处理的并发度，如果并发度不够，可能导致集群的资源不被充分利用。看各机器CPU的所有核心是不是都在工作，如果有空闲的，则可以考虑增加并发度（可
+        以调整选项 spark.default.parallelism ）一个分区对应一个task
+    三要数据序列化，数据收到后，当需要与磁盘交换数据时，数据可能会进行序列化和反序列化，好处是节省空间和内存，但会增加计算负载
+2.收到数据后，尽可能快地处理
+        让每个批次的数据能够尽快处理，批次间隔时间的设置非常重要
+        
+ ================
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+import org.apache.spark.sql.functions._
+       
+// 对整个DataFrame的数据去重
+data.distinct()
+data.dropDuplicates()
+       
+// 对指定列的去重
+val colArray=Array("affairs", "gender")
+data.dropDuplicates(colArray)
+//data.dropDuplicates("affairs", "gender")
+       
+   
+val df=data.filter("gender=='male' ")
+// data与df的差集
+data.except(df).show
++-------+------+----+------------+--------+-------------+---------+----------+------+
+|affairs|gender| age|yearsmarried|children|religiousness|education|occupation|rating|
++-------+------+----+------------+--------+-------------+---------+----------+------+
+|    0.0|female|32.0|        15.0|     yes|          1.0|     12.0|       1.0|   4.0|
+|    0.0|female|32.0|         1.5|      no|          2.0|     17.0|       5.0|   5.0|
+|    0.0|female|32.0|        15.0|     yes|          4.0|     16.0|       1.0|   2.0|
+|    0.0|female|22.0|        0.75|      no|          2.0|     12.0|       1.0|   3.0|
+|    0.0|female|27.0|         4.0|      no|          4.0|     14.0|       6.0|   4.0|
++-------+------+----+------------+--------+-------------+---------+----------+------+
+ 
+ 
+// data与df的交集
+data.intersect(df)        
+        
+        

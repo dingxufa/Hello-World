@@ -1,0 +1,5 @@
+1.kafaka作为数据源时，可以使用随机partitioner使数据均匀分布到各partition，每个partition对应spark的一个task
+2.文件系统作为数据源，应该使文件的大小相差不多
+3.在shuffle时，增大或缩小并行度，partitionBy(new selfParition())  groupBy(new Parition())
+        设置spark.default.parallelism
+        如果是spark-sql set spark.sql.shuffle.paritions=[num_task]

@@ -1,0 +1,518 @@
+
+scalac  xxx.scala
+scala xxx
+---
+//private [itcast] 包访问权限指定能引用的包范围
+//private私有构造器只能在伴生对象里用
+private [itcast] class Person private{}
+
+//伴生对象（单列的）里面的方法都是静态方法 定义的变量都是静态变量
+//
+object Person{
+    def apply():Int = {1}
+
+    def main(args:Array[String]){
+        val p = Person()//会找跟他参数一致的apply方法
+    }
+}
+
+//主构造器 相当于两个成员变量 val: getXX  var:getXXX setXXX
+private [itcast] class Person private(val id:Long,var name:String){
+
+    var age:Int = 0
+    //重载构造方法
+    def this(id:Long,name:String,age:Int){
+        this(id,name)
+        this.age = age
+    }
+    println("123")//会被执行
+
+
+    def sayHi(){
+        println("hi~") //会被加载但不会执行
+    }
+}
+
+//抽象接口
+abstract class Animal{
+    def run() //不实现
+}
+
+//接口
+trait Flyable{
+    def fly() //可以实现，也可以不实现
+}
+
+private [itcast] class Person private(val id:Long,var name:String)extends Animal with Flyable{
+
+
+}
+
+---模式匹配,匹配内容 类型 样例类
+val arr  = Array(1,"ab",2.0)
+
+e match{
+    case Int => {}
+    case String => {}
+    case _
+}
+
+//样例类 case class 一定要有参数 ,可以有多个实例，可new可 不new
+case class SubmitTask(name:String,age:Int)
+SubmitTask("zx",1)
+
+//匹配时没用match，用的是偏函数
+//传入是任何类型，传出是Int
+def Par[Any,Int] = {
+    case
+}
+
+Option
+Some
+None
+
+Actor
+class Task extends Actor{
+    loop{
+
+    }
+}
+object Task {
+    def main{
+        var t = new Task
+        t.start()
+        t !
+        t !?
+        t !!
+    }
+}
+
+=================Scala定义方法
+def main(x:Int,y:Int):Int={ ....}
+def main()={}
+def f={ print（）；1}
+
+
+===================Scala定义函数
+1：
+            函数名         参数类型转换              函数体
+scala> val fun2:     (Int,Double)=>(Double)      ={(a,b)=>b+a}
+fun2: (Int, Double) => Double = <function2>
+
+scala> fun2(1,2.4)
+res2: Double = 3.4
+
+2:
+           函数名      参数类型        （不能加返回类型）    函数体
+scala> val fun1 = (a:Int,b:Double)  =>   { a+b }
+fun1: (Int, Double) => Double = <function2>
+
+scala> fun1(1,2.4)
+res3: Double = 3.4
+
+----------
+case class 不用new就能创建实例  能用于模式匹配
+--
+val conf = new SparkConf().setAppName("MobileLocation").setMaster("local[1]")
+    conf.set("spark.testing.memory", "2147480000")
+
+============Scala泛型
+class Person[T <: Comparable[T]] 指定上界
+
+class Person[T]{
+    def choose[T <: Comparable[T]](first:T,second:T):T={
+        first
+    }
+}
+隐式转换：我自己的隐式上下文 object MyPredef{
+    implicit 函数
+    implicit 值
+}
+
+viewbound 要求传入一个隐式转换函数
+class Chooser[T <% Ordered[T]] {
+    def bigger(first:T,second:T):T = {
+        if(first > second) first else second
+    }
+}
+
+也可以用柯里化
+class Chooser[T]{
+    def bigger(first:T,second:T)(implicit ord:T => Ordered[T] ):T={
+        if(first > second) first else second
+    }
+}
+
+contextbound要求传入一个隐式转换值
+class Chooser[T:Ordering]{
+     def bigger(first:T,second:T):T={
+        val ord   = implicitly[Ordering[T]]
+        if(ord.gt(first,second)) first else second
+    }
+}
+或者
+class Chooser[T]{
+     def bigger(first:T,second:T)(implicit ord:Ordering[T]):T={
+        if(ord.gt(first,second)) first else second
+    }
+}
+
+[+T]
+[-T]
+
+
+---------------------------------------------------
+import scala.collection.mutable.ArrayBuffer
+
+scala> val func:Int => String ={ x => x.toString}
+func: Int => String = <function1>
+// 函数func  传入类型是Int   传出类型String   x是传入值的引用   x.toString 是执行的操作
+scala> func(10)
+res28: String = 10
+
+( val func1 = (x:Int) => x.toString  )
+scala> val func:Int => String={x=>x.toString}
+func: Int => String = <function1>
+
+scala> func(10)
+res0: String = 10
+
+scala> val f= (x:Int)=>{x.toString}
+f: Int => String = <function1>
+
+scala> f(10)
+res1: String = 10
+
+scala> val f= (x:Int)=>:String={x.toString}
+<console>:1: error: ';' expected but '=' found.
+       val f= (x:Int)=>:String={x.toString}
+
+1.
+scala> val func1 = (x:Int,y:Double)=>(y,x)
+func1: (Int, Double) => (Double, Int) = <function2>
+
+scala> func1(2,3.0)
+res30: (Double, Int) = (3.0,2)
+
+2.
+scala> val func2: (Int,Double) => (Double,Int)  ={
+     | (a,b) => (b,a)
+     | }
+func2: (Int, Double) => (Double, Int) = <function2>
+
+scala> func2(2,3.0)
+res31: (Double, Int) = (3.0,2)
+
+scala> val fun2:     (Int,Double)=>(Double)    ={(a,b)=>b+a}
+fun2: (Int, Double) => Double = <function2>
+
+scala> fun2(1,2.4)
+res2: Double = 3.4
+
+-------------------------###Array
+
+scala> val a = Array(1,2,3,4,5)
+a: Array[Int] = Array(1, 2, 3, 4, 5)
+
+scala> for(i <- a) yield i * 10
+res52: Array[Int] = Array(10, 20, 30, 40, 50)
+
+scala> a.map((x:Int) => x * 10 )
+res53: Array[Int] = Array(10, 20, 30, 40, 50)
+
+scala> a.map( x => x * 10 )
+res54: Array[Int] = Array(10, 20, 30, 40, 50)
+
+scala> a.map( _ * 10) // _ 是占位符
+res55: Array[Int] = Array(10, 20, 30, 40, 50)
+-----
+scala> arr
+res58: Array[Int] = Array(1, 2, 3, 4, 5, 6, 7, 8, 9)
+
+scala> arr.filter( (x:Int) => x % 2 == 0 )
+res59: Array[Int] = Array(2, 4, 6, 8)
+
+scala> arr.filter( x => x % 2 ==0)
+res60: Array[Int] = Array(2, 4, 6, 8)
+
+scala> arr.filter( _ % 2 ==0)
+res61: Array[Int] = Array(2, 4, 6, 8)
+
+scala> arr.filter( _ % 2 ==0).map( _ * 10)
+res62: Array[Int] = Array(20, 40, 60, 80)
+
+scala> arr.sum
+res63: Int = 45
+
+scala> arr.sorted
+res64: Array[Int] = Array(1, 2, 3, 4, 5, 6, 7, 8, 9)
+
+scala> arr.sorted.reverse
+res66: Array[Int] = Array(9, 8, 7, 6, 5, 4, 3, 2, 1)
+
+scala> val arr = Array(3,8,1,4,2,6)
+arr: Array[Int] = Array(3, 8, 1, 4, 2, 6)
+
+scala> arr.sortBy(x => x)
+res67: Array[Int] = Array(1, 2, 3, 4, 6, 8)
+
+scala> arr.sortWith( _ > _)
+res68: Array[Int] = Array(8, 6, 4, 3, 2, 1)
+
+scala> arr.sortWith( _ < _)
+res69: Array[Int] = Array(1, 2, 3, 4, 6, 8)
+
+scala> arr.sortWith( (x,y) => x > y)
+res70: Array[Int] = Array(8, 6, 4, 3, 2, 1)
+
+scala> arr.sortWith( (x,y) => x < y)
+res71: Array[Int] = Array(1, 2, 3, 4, 6, 8)
+
+
+----------------------###Map
+scala> val m = Map("a" -> 1,"b" -> 2)
+m: scala.collection.immutable.Map[String,Int] = Map(a -> 1, b -> 2)
+
+scala> m("a")
+res72: Int = 1
+
+scala> m("a") = 2
+<console>:10: error: value update is not a member of scala.collection.immutable.Map[String,Int]
+              m("a") = 2
+
+
+scala> import scala.collection.mutable.Map              ^
+scala> val mm = Map("i"->1,"j"->2)
+mm: scala.collection.mutable.Map[String,Int] = Map(j -> 2, i -> 1)
+
+scala> mm("i")
+res82: Int = 1
+
+scala> mm("i") = 10
+scala> mm("i")
+res85: Int = 10
+
+scala> mm += ("o" -> 6)
+res86: mm.type = Map(j -> 2, i -> 10, o -> 6)
+
+scala> mm
+res87: scala.collection.mutable.Map[String,Int] = Map(j -> 2, i -> 10, o -> 6)
+
+scala> mm += (("o" -> 7))
+res88: mm.type = Map(j -> 2, i -> 10, o -> 7)
+
+scala> import java.util.HashMap
+import java.util.HashMap
+
+scala> val hm =new HashMap()
+hm: java.util.HashMap[Nothing,Nothing] = {}
+
+scala> val m = Map(("a",1),("b",2) )
+m: scala.collection.mutable.Map[String,Int] = Map(b -> 2, a -> 1)
+
+scala> m("a") = 10
+
+scala> m
+res90: scala.collection.mutable.Map[String,Int] = Map(b -> 2, a -> 10)
+
+scala> m.getOrElse("c",0)
+res92: Int = 0
+
+-------------------###tuple
+scala> val t = (1,"spark",2.0)
+t: (Int, String, Double) = (1,spark,2.0)
+
+scala> t._2
+res93: String = spark
+
+scala> val t = (1,"spark",2.0)
+t: (Int, String, Double) = (1,spark,2.0)
+
+scala> t._2
+res93: String = spark
+
+scala> val pair=("t",5)
+pair: (String, Int) = (t,5)
+
+scala> m
+res94: scala.collection.mutable.Map[String,Int] = Map(b -> 2, a -> 10)
+
+scala> m += pair
+res95: m.type = Map(t -> 5, b -> 2, a -> 10)
+
+scala> m += ("y",6)
+<console>:14: error: type mismatch;
+ found   : String("y")
+ required: (String, Int)
+              m += ("y",6)  //注意这里
+
+
+
+
+
+                    ^
+//scala> m += ( ("y",6))  //注意这里  map += ("y"->6)  map += ( ("y",6) )
+//res97: m.type = Map(t -> 5, b -> 2, y -> 6, a -> 10)
+
+scala> val t = ("a",1,2.0)
+t: (String, Int, Double) = (a,1,2.0)
+
+scala> t._2
+res98: Int = 1
+
+scala> val t,(x,y,z) = ("a",1,2.0)
+t: (String, Int, Double) = (a,1,2.0)
+x: String = a
+y: Int = 1
+z: Double = 2.0
+
+scala> x
+res99: String = a
+
+scala> val arr = Array(("a",1),("b",2) )
+arr: Array[(String, Int)] = Array((a,1), (b,2))
+
+scala> arr.toMap
+res100: scala.collection.immutable.Map[String,Int] = Map(a -> 1, b -> 2)
+
+scala> val a = Array("a","b","c")
+a: Array[String] = Array(a, b, c)
+
+scala> val b = Array(1,2,3)
+b: Array[Int] = Array(1, 2, 3)
+
+scala> a.zip(b)
+res101: Array[(String, Int)] = Array((a,1), (b,2), (c,3))
+
+scala> res101.toMap
+res102: scala.collection.immutable.Map[String,Int] = Map(a -> 1, b -> 2, c -> 3)
+
+scala> val b = Array(1,2,3,4)
+b: Array[Int] = Array(1, 2, 3, 4)
+
+scala> a.zip(b)
+res103: Array[(String, Int)] = Array((a,1), (b,2), (c,3))
+
+scala> import scala.collection.mutable.ListBuffer
+import scala.collection.mutable.ListBuffer
+
+scala> val lb = List
+ListBuffer   List
+
+scala> val lb = ListBuffer(1,2,3)
+lb: scala.collection.mutable.ListBuffer[Int] = ListBuffer(1, 2, 3)
+
+scala> lb(1) = 200
+
+scala> lb
+res105: scala.collection.mutable.ListBuffer[Int] = ListBuffer(1, 200, 3)
+
+scala> lb.map(_ * 10)
+res106: scala.collection.mutable.ListBuffer[Int] = ListBuffer(10, 2000, 30)
+
+scala> lb
+res107: scala.collection.mutable.ListBuffer[Int] = ListBuffer(1, 200, 3)
+
+
+-------------------------------
+scala> val lines = List("hello tom hello jerry", "hello jerry", "hello kitty")
+lines: List[String] = List(hello tom hello jerry, hello jerry, hello kitty)
+
+scala> lines.flatMap(_.split(" "))
+res0: List[String] = List(hello, tom, hello, jerry, hello, jerry, hello, kitty)
+
+scala> lines.flatMap(_.split(" ")).map((_,1))
+res1: List[(String, Int)] = List((hello,1), (tom,1), (hello,1), (jerry,1), (hello,1), (jerry,1), (hello,1), (kitty,1))
+
+scala> lines.flatMap(_.split(" ")).map((_,1)).groupBy(_._1)
+res2: scala.collection.immutable.Map[String,List[(String, Int)]] = Map(tom -> List((tom,1)), kitty -> List((kitty,1)), jerry -> List((jerry,1), (jerry,1)), hello -> List((hello,1), (hello,1), (hello,1), (hello,1)))
+
+///mapValues(_.foldLeft(0)(_ + _._2 )) 第一个_是指tom -> List((tom,1))中的List((tom,1))这个value即一个list中的每个元组,
+//第二个_是fold函数中每次累加的结果   第三个同第一个_   0是foldLeft的初始值
+scala> lines.flatMap(_.split(" ")).map((_,1)).groupBy(_._1).mapValues(_.foldLeft(0)(_ + _._2 ))
+res4: scala.collection.immutable.Map[String,Int] = Map(tom -> 1, kitty -> 1, jerry -> 2, hello -> 4)
+
+scala> lines.flatMap(_.split(" ")).map((_,1)).groupBy(_._1).mapValues(_.foldLeft(0)(_ + _._2 )).toList
+res13: List[(String, Int)] = List((tom,1), (kitty,1), (jerry,2), (hello,4))
+
+scala> lines.flatMap(_.split(" ")).map((_,1)).groupBy(_._1).mapValues(_.foldLeft(0)(_ + _._2 )).toList.sortBy(_._2)
+res14: List[(String, Int)] = List((tom,1), (kitty,1), (jerry,2), (hello,4))
+
+scala> lines.flatMap(_.split(" ")).map((_,1)).groupBy(_._1).mapValues(_.foldLeft(0)(_ + _._2 )).toList.sortBy(_._2).reverse
+res15: List[(String, Int)] = List((hello,4), (jerry,2), (kitty,1), (tom,1))
+
+
+-----------------
+
+scala> val arr = Array(1,2,3,4)
+arr: Array[Int] = Array(1, 2, 3, 4)
+
+scala> arr.map(x => println(x))
+1
+2
+3
+4
+res8: Array[Unit] = Array((), (), (), ())
+
+scala> for( i <- arr) println(i)
+1
+2
+3
+4
+
+scala> arr.map(println)
+1
+2
+3
+4
+res10: Array[Unit] = Array((), (), (), ())
+
+scala> arr.foreach(x => println(x))
+1
+2
+3
+4
+
+
+
+------------
+scala> arr
+res16: Array[Int] = Array(1, 2, 3, 4)
+
+scala> arr.sum
+res17: Int = 10
+
+scala> arr.par
+res18: scala.collection.parallel.mutable.ParArray[Int] = ParArray(1, 2, 3, 4)
+
+scala> arr.par.reduce(_+_)
+res19: Int = 10
+
+scala>  arr.par.foldLeft(0)(_ + _)
+res20: Int = 10
+
+scala>  arr.par.foldLeft(10)(_ + _)
+res21: Int = 20
+
+--------
+scala> val arr = List(List(1,2,3),List(3,4,5),List(2),List(0))
+arr: List[List[Int]] = List(List(1, 2, 3), List(3, 4, 5), List(2), List(0))
+
+scala> arr.aggregate(10)( _ + _.sum , _ + _ )
+res22: Int = 30
+
+--
+scala> val l1 = List(5,6,4,7)
+l1: List[Int] = List(5, 6, 4, 7)
+
+scala> val l2 = List(1,2,3,4)
+l2: List[Int] = List(1, 2, 3, 4)
+
+scala> l1.union(l2)
+res23: List[Int] = List(5, 6, 4, 7, 1, 2, 3, 4)
+
+scala> l1.intersect(l2)
+res24: List[Int] = List(4)
+
+scala> l1.diff(l2)
+res25: List[Int] = List(5, 6, 7)
