@@ -310,6 +310,50 @@ $ echo "This is sample text 2" >> temp.txt
 
 
 
+```
+[root@app7 etc]# echo  "1 2 3 4\nhello\n5 6"
+1 2 3 4\nhello\n5 6
+[root@app7 etc]# echo -e "1 2 3 4\nhello\n5 6"
+1 2 3 4
+hello
+5 6
+
+
+$# ：传给脚本的参数个数;
+$0 ：脚本名称;
+$n ：n为数字，代表传给脚本的第n个参数;
+$@ ：参数列表;
+$* ：也是显示参数列表,与上一条命令不同的是,当在双引号里面时,”$*”表示一个参数,即”a b c”,而”$@”表示三个参数,即”a” “b” “c”;
+$$ ：执行当前脚本的进程ID;
+$? ：最后一条命令的退出状态,0表示执行成功,非0表示执行失败.
+
+echo "number:$#"
+echo "scname:$0"
+echo "first :$1"
+echo "second:$2"
+echo "third :$3"
+echo "fourth:$4"
+echo "argume:$@"
+echo "show parm list:$*"
+echo "show process id:$$"
+echo "show precomm stat: $?"
+--------------------- 
+
+[root@app7 ~]# ./test2.sh a b c
+number:3
+scname:./test2.sh
+first :a
+second:b
+third :c
+fourth:
+argume:a b c
+show parm list:a b c
+show process id:21007
+show precomm stat: 0
+
+
+```
+
 
 
 
