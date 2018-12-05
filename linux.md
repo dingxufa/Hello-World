@@ -352,7 +352,23 @@ show process id:21007
 show precomm stat: 0
 
 
+
+
+
 ```
+
+
+
+gawk 'BEGIN {FS=":"} { "grep root /etc/passwd" | getline; print $1,$6 }' 
+
+[root@app7 ~]# gawk 'BEGIN{FS=":"} {name[$1]=$5} END{for( i in name){ print i,"\t", name[i]}}' /etc/passwd
+ntp 	 
+rpc 	 Rpcbind Daemon
+vcsa 	 virtual console memory owner
+dbus 	 System message bus
+
+
+
 
 
 
