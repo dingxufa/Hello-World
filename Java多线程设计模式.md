@@ -1918,9 +1918,9 @@ public class Mutex extends ReentrantLock {
 
 ## 2.1 immutable模式
 
-Java . lang .Str ing 类用于表示字符 串。Str ing 类中**并没有修改字符串内容的方法**。也就 是说，String   的实例所表示的**字符串的内容绝对不会发生变化**。
-**正因为如此 ，St r in g 类巾的方法无需声明为 syn ch roni z ed。因为实例的内部状态不会发 生改变，所以无论 String  实例被多少〉个线程访问，也无需执行线程的互斥处理。**
-本章，我们将学习 Im m utable 模式u Imm utable 就是不变的 、不发生改变的意思 。Im m utable 模式中存在着确保实例状态不发生改变的类 （ immutable 类 ）。在访问这些实例时并不需要执行程时 的互斥处理，因此若能巧妙利用该模式，定能提高程序性能  
+Java.lang.String类用于表示字符 串。String类中**并没有修改字符串内容的方法**。也就 是说，String的实例所表示的**字符串的内容绝对不会发生变化**。
+**正因为如此 ，String类中的方法无需声明为synchronized。因为实例的内部状态不会发生改变，所以无论 String实例被多少个线程访问，也无需执行线程的互斥处理。**
+本章，我们将学习 Immutable 模式unImmutable 就是不变的 、不发生改变的意思 。Im mutable 模式中存在着确保实例状态不发生改变的类 （ immutable 类 ）。在访问这些实例时并不需要执行程时 的互斥处理，因此若能巧妙利用该模式，定能提高程序性能  
 
 ## 2.2示例程序
 
@@ -1933,11 +1933,11 @@ Java . lang .Str ing 类用于表示字符 串。Str ing 类中**并没有修改
 | Prin t PersonThread | 显示 Person 实例的线程的类 |
 
 **使用 Immutable 模式的 Person 类**
-代码清单 2-1 巾的 Person 类用于表示人 ，包含姓名 （ name ） 和地址 （ address ） 这两个字段。
-Pe r son 类的字段值**仅可通过构造函数来设置** 。类中设有引用字段值的 g e t Na me 方法和getAddress 方法 ，但**并没有修改字段值的 setName 方法或 setAddress 方法。 因此 ，Person 类的实例一且创建，其字段的值就不会发生改变 。**
-这时，即便**多个线程同时访问同一个实例 ，Pe r son 类也是安全的。**Pe rson 类巾的所有方法也都允许多个线程同时执行。Person 类的get Name 、getAdd ress 和 toSt ring 方法 都无需声明为 synchron ized。
-Pe r son 类声**明为了 f ina l 类型** ，这就表示我们无法创建 Pe r son 类的子类。虽然这并不是Immutable 模式的必要条件 ，但却是防止子类修改其字段值的 一种措施。
-Person 类的字段 n ame 和 address 的可见性都为 priva te。也就是说，这两个字段都只有 从该类的 内部才可以访问。这**也不是 Imm utable 模式的必要条件．而是防止子类修改其字段值的一种措施**。另外，**Pe rson 类的字段 name 和 address 都卢明为了 final ，意即一旦字段被赋值一 次，就不会再被赋值。**这也不是 Immutable 模式的必要条件 ，只是为了明确编程人员的意阁。这样 一来 ，即使不小心写了赋值代码 ，在编译时也会有错误提示 。
+代码清单 2-1中的 Person 类用于表示人 ，包含姓名 （ name ） 和地址 （ address ） 这两个字段。
+Person 类的字段值**仅可通过构造函数来设置** 。类中设有引用字段值的 g e t Na me 方法和getAddress 方法 ，但**并没有修改字段值的 setName 方法或 setAddress 方法。 因此 ，Person 类的实例一且创建，其字段的值就不会发生改变 。**
+这时，即便**多个线程同时访问同一个实例 ，Pe r son 类也是安全的。**Pe rson 类巾的所有方法也都允许多个线程同时执行。Person 类的get Name 、getAdd ress 和 toString 方法 都无需声明为 synchronized。
+Person 类声**明为了final类型** ，这就表示我们无法创建 Pe r son 类的子类。虽然这并不是Immutable 模式的必要条件 ，但却是防止子类修改其字段值的一种措施。
+Person 类的字段 name 和 address 的可见性都为 priva te。也就是说，这两个字段都只有 从该类的 内部才可以访问。这**也不是 Imm utable 模式的必要条件．而是防止子类修改其字段值的一种措施**。另外，**Pe rson 类的字段 name 和 address 都卢明为了 final ，意即一旦字段被赋值一 次，就不会再被赋值。**这也不是 Immutable 模式的必要条件 ，只是为了明确编程人员的意阁。这样 一来 ，即使不小心写了赋值代码 ，在编译时也会有错误提示 。
 
 ```java
 public final class Person {
@@ -1980,7 +1980,7 @@ public class Main {
 
 
 **PrintPersonThread 类**
-PrintPersonThread  类 （ 代码清单 2-3 ） 用于持续显示构造函数中传入的 Per so口类的实例。 显示的字符串格式如下。
+PrintPersonThread  类 （ 代码清单 2-3 ） 用于持续显示构造函数中传入的 person类的实例。 显示的字符串格式如下。
 
 Th read .currentThread () .getName ()  ＋ ” prints  "  + person
 
@@ -1988,7 +1988,7 @@ Th read .currentThread () .getName ()  ＋ ” prints  "  + person
 
 Thread .currentThread ( )  .getName ( )
 
-此处的 Th read .cur rentThread 方法用于获取当前的线程 ①，即获取调用 curren t Th read 方法的线程本身。cu r rent Thread 是 Thread 类的静态方法 ，而get Name 是 Th read 类的实例 方法 ，用于获取线程的名称。
+此处的 Th read .cur rentThread 方法用于获取当前的线程 ①，即**获取调用 currentTh read 方法的线程本身**。current Thread 是 Thread 类的静态方法 ，而get Name是Th read 类的实例方法 ，用于获取线程的名称。
 
 另外．如下语句 （ 1 ） 的含义等同于 （ 2 ）。
 
@@ -2018,9 +2018,9 @@ public class PrintPersonThread extends Thread {
 
 
 在上图中 ，字段名后面都添加了｛ f r o z e n ｝ 约束 （ frozen 也就是 “冻结” 的意思）。这是 UML 的标识法，表示“实例被创建且字段被初始化之后  ，字段的值就不会再被修改”。**这对应于 Java  中的 “final 字段”。**
-另外，方法名后面都添加了 ｛ concurrent ｝ 约束 （ concurrent 也就是 “并发” 的意思 ）。这 也是 UML 的标识法，它明确表示 “**多个线程同时执行也没关系**” 。这对应于 Java  中的 “**无需声明为 synchronized 方法” （ 即使不加 syηchron ized 也能正确执行 ）。**
-现在我们来回想一下 Single Threaded Execution 模式 （ 第 1章）。该模式会将修改或引用实例状 态的地方设置为临界区，使这个区域只能由一个线程同时执行 。但像 Pe r so口类这样，**实例的状态 绝对不会发生改变时** ，情况就不一样了。即使多个钱程同时对该实例执行处理 ，实例也不会出错 ， 因为实例的状态肯定不会发生改变 。既然实例的状态肯定不会发生改变 ，那么也就无须使用 synch ronized 来保护实例 。因为即使想破坏实例 ，也破坏不了。
-对于适用 Immutable 模式的类 （ immutable 类），我们无需再使用 sy n chron i z ed 方法执行线 程的互斥处理 ，因为即使不使用 sy n ch r o n iz ed ，也能确保安全性。虽然到此为止的 内容全都是 该模式的优点，但确保Immutability 是一项出乎意料的难题，还请大家注意 （ 本章习题 2-4 中将详 细讲解 ）。
+另外，方法名后面都添加了 ｛ concurrent ｝ 约束 （ concurrent 也就是 “并发” 的意思 ）。这 也是 UML 的标识法，它明确表示 “**多个线程同时执行也没关系**” 。这对应于 Java  中的 “**无需声明为 synchronized 方法” （ 即使不加 syηchronized 也能正确执行 ）。**
+现在我们来回想一下 Single Threaded Execution 模式 （ 第 1章）。==该模式会将修改或引用实例状态的地方设置为临界区，使这个区域只能由一个线程同时执行== 。但像 Pe r so口类这样，**实例的状态绝对不会发生改变时** ，情况就不一样了。即使多个钱程同时对该实例执行处理 ，实例也不会出错 ， 因为实例的状态肯定不会发生改变 。既然实例的状态肯定不会发生改变 ，那么也就无须使用 synchronized 来保护实例 。因为即使想破坏实例 ，也破坏不了。
+对于适用 Immutable 模式的类 （ immutable 类），我们无需再使用 synchronized 方法执行线 程的互斥处理 ，因为即使不使用synchronized ，也能确保安全性。虽然到此为止的内容全都是该模式的优点，但确保Immutability 是一项出乎意料的难题，还请大家注意 （ 本章习题 2-4 中将详 细讲解 ）。（**引用溢出，类中的属性溢出了自己的作用域，外部能够修改，破坏了不变性条件）**
 
 
 
@@ -2032,7 +2032,7 @@ public class PrintPersonThread extends Thread {
 
 ### Immutable （ 不可变的 ）
 
-Immutable  角色是一个类 ，在这个角色中 ，字**段的值不可以修改 ，也不存在修改字段内容的方 法**。Immutable 角色的**实例被创建后 ，状态将不再发生变化** 。这时，无需对 Immutable 角色应用 Single Threaded Execution 模式。也就是说，无需将 Immutable 角色的方法声明为 synch ronized 。
+Immutable  角色是一个类 ，在这个角色中 ，**字段的值不可以修改 ，也不存在修改字段内容的方法**。Immutable 角色的**实例被创建后 ，状态将不再发生变化** 。这时，无需对 Immutable 角色应用 Single Threaded Execution 模式。也就是说，无需将 Immutable 角色的方法声明为 synchronized 。
 在示例程序中 ，由 Person 类扮演此角色。
 Immutable 模式的类图和 Timethreads  图分别如图 2-3 和图 2-4 所示。
 
@@ -2046,32 +2046,30 @@ Immutable 模式的类图和 Timethreads  图分别如图 2-3 和图 2-4 所示�
 
 ### **何时使用 （ 可使用Immutable 模式的情况 ）**
 
-lmmutable 模式该在哪些情况下使用呢？换言之 ，设计人员应该在**什么情况下考虑不可变性呢**？
+lmmutable 模式该在哪些情况下使用呢？换言之，设计人员应该在**什么情况下考虑不可变性呢**？
 
-**·实例创建后 ，状态不再发生变化时**
+**实例创建后 ，状态不再发生变化时**
 首先，如前面反复讲述的那样 ，“**实例创建后．状态不再发生变化” 是必要条件**。**实例的状态 是由字段的值决定的 ，所以 “将字段声明为 f inal 字段 且不布在 setter 方法” 是重点所在** ( setter 方法就是像 setName 和 setAddress 这样的用于修改字段值的方法的总称 ）
-但这还不够充分。即便宇段 final字段 且不存在set t er 方法 ．也有**==可能不是不可变的==** ( immutable ）。因为即**==使字段的值不会发生变化 ，字段引用的实例也有可能会发生变化==** 。具体示例我 们留到习题 2-4 中再体会。
+但这还不够充分。即便字段 final字段 且不存在set t er 方法 ．也有**==可能不是不可变的==** ( immutable ）。因为即**==使字段的值不会发生变化 ，字段引用的实例也有可能会发生变化==** 。具体示例我 们留到习题 2-4 中再体会。（引用溢出，属性溢出了自己的领域）
 
 
 
 ### 
 
-**.实例是共享的，旦被频繁访问时**
-Immutable 模 式 的优 点是 “ 不需要 使 用 syn ch r o n i z ed 进 行 保 护 ”  不 需 要 使 用 sy n chr on i z ed 进行保护就意味着能够在不失去安全性和生存性的前提下提高性能 ,当实**例被多 个线程共辜 ，且有 可能被频繁访问时** ，Immutable 模式的优点就会凸 扭出来。关于不使用 synchron ized 能多大程度地提高性能 ，我们留到习题 2-3  ，涵过实验来看看 。
+**实例是共享的，且被频繁访问时**
+Immutable 模 式 的优 点是 “ 不需要 使 用 synchronized进行保护 ”  不需要使用synchronized 进行保护就意味着能够在不失去安全性和生存性的前提下提高性能 ,当实**例被多个线程共享 ，且有可能被频繁访问时** ，Immutable 模式的优点就会凸 出来。关于不使用 synchron ized 能多大程度地提高性能 ，我们留到习题 2-3  ，通过实验来看看 。
 
 
-
-### 
 
 ### **考虑成对的 mutable 类和 immutable 类 ［ 性能 ］**
 
-关于性能，我们进一步思考一下。例如 ，假设存在一个类 ，由于该类会被多个线程访问．所以 我们使用 synch ron ized 进行了保护。这里 ，如果该类巾存在 sett er 方法 ，那么 Im mutable 模 式就不成立了。
+关于性能，我们进一步思考一下。例如 ，假设存在一个类 ，由于该类会被多个线程访问．所以 我们使用 synchronized 进行了保护。这里 ，如果该类中存在 sett er 方法 ，那么 Im mutable 模 式就不成立了。
 但是，假设我们查看程序后发现实际上这个 setter 方**法并未被使用** ．邢么就可以将字段声明 为 f in a l ，删除 set t er 方法 ，并注意遵守不可变性 ，这样4许就能将其改造为可适用 于 Immutable  模式了。这样一来 ，性能便能得到很好地提高 ，可喜可贺啊。
-下面再来假设我们查看程序后遗憾地发现实际上 sett er  方法被使用了。这时 ，眩类就不适用于 Immutable 模式了 ，但这还不是放弃 的时候。我们来仔细查看一下整个程序是如何使用该类的 ． **看是不是可以分为使用 setter 方法的情况与不使用 setter 方法的情况。如果可以明确分为这两**种情况 ，那我们是不是可以将这个类拆分为 mutable 类和 immutable 类 ，然后再设计成可以根据mutable 实例创建 immutable 实例，并可以反过来根据i mmutable 实例创建 m utable 实例呢？这样，immutable 类的部分就可以应用 Immutable 模式了。
+下面再来假设我们查看程序后遗憾地发现实际上 setter方法被使用了。这时 ，类就不适用于 Immutable 模式了 ，但这还不是放弃 的时候。我们来仔细查看一下整个程序是如何使用该类的 ． **看是不是可以分为使用 setter 方法的情况与不使用 setter 方法的情况。如果可以明确分为这两**种情况 ，那我们是不是可以将这个类拆分为 mutable 类和 immutable 类 ，然后再设计成可以根据mutable 实例创建 immutable 实例，并可以反过来根据i mmutable 实例创建 m utable 实例呢？这样，immutable 类的部分就可以应用 Immutable 模式了。
 
 这里来介绍一个具体示例。Java 的标准类库中就有成对的 mutable 类和 immutable 类 ，例如 ，
-**java . lang .StringBu f f er 类和 java .lang .String 类**。S**tringBu f f er 类是表示字符串的 m utable 类。S t r in gBu f f e r 表示的字符串能够随便改写，为了确保安全 ，改写时需要妥善使用 synch roniz ed。而 Str ing 类是表示字符串的 immutable 类。Str i呵实例表示的字符串不可以改写。由于对 Str ing 执行操作的方法都不是 synchronized 方法 ，所以引用的速度也就更快** ①。S t r in gBu f f e r 类中有 个以 St r in g 为参数的构造函数 ，而 S t r i n g 类中有一个以 Str ingBuf f er 为参数的构造函数。也就是说，St r ingBu f f er 的实例和 String 的实例可以互 相转换。
-针对 “字符串” 这个概念 ，Ja va 提供了成对的 StringBu f f er 类和 String 类。如果需要频 繁修改字符串 内容，则使用 St r in gBu f f e r ；如果不需要修改字符串内容，只是引用其内容，则 使用 Str 工ngo 请妥善区分各个类的作用。
+Java.lang.StringBuffer类和Java.lang.String 类**。StringBuffer类是表示字符串的 mutable 类。StringBuffer表示的字符串能够随便改写，为了确保安全 ，改写时需要妥善使用 synchronized。而 String类是表示字符串的 immutable 类。String 实例表示的字符串不可以改写。由于对 Str ing 执行操作的方法都不synchronized 方法 ，所以引用的速度也就更快** ①。类中有 个以为参数的构造函数 ，而String 类中有一个以 StringBuffer为参数的构造函数。也就是说，StringBuffer 的实例和 String 的实例可以互相转换。
+针对 “字符串” 这个概念 ，Java 提供了成对的StringBuffer类和 String 类。如果需要频 繁修改字符串 内容，则使用 StringBuffer；如果不需要修改字符串内容，只是引用其内容，则 使用String 
 
 >① 当 多个字符串组成新的字符串时 ，StringBuffer 类的速度比 String 类快
 >
@@ -2081,11 +2079,11 @@ Immutable 模 式 的优 点是 “ 不需要 使 用 syn ch r o n i z ed 进 �
 
 ### **为了确保不可变性 ［ 可复用性 ］**
 
-不可变性是一个很微妙的性质。**代码稍微一修改 ，程序可能就会失去不可变性** 。如果从使用了 Immutable 模式的程序中删除了synchronized ，那么当失去不可变性时 ，程序的安全性就会完全 丧失，所以一定要多加注意。在程序的注释或 API 文档中 ，一定要明确记载不可变性 。如果以后因 “不知道某个类的不可变性很重要” 而粗心地删掉了字段的 f i n a l ，并定义了 setter 方法 ，那么这 个类的不可变性就会丧失。请注意 ，即便没有定义 setter 方法 ，**==只要字段的可见性不是 p r iva t e , 该字段的值就有被其他类修改的风险。==**
+不可变性是一个很微妙的性质。**代码稍微一修改 ，程序可能就会失去不可变性** 。如果从使用了 Immutable 模式的程序中删除了synchronized ，那么当失去不可变性时 ，程序的安全性就会完全丧失，所以一定要多加注意。在程序的注释或 API 文档中 ，一定要明确记载不可变性 。如果以后因 “不知道某个类的不可变性很重要” 而粗心地删掉了字段的 f i n a l ，并定义了 setter 方法 ，那么这 个类的不可变性就会丧失。请注意 ，即便没有定义 setter 方法 ，**==只要字段的可见性不是 private , 该字段的值就有被其他类修改的风险。==**
 另外，下列这些修改也有可能会破坏不可变性  。乍一看这些修改好像没有什么问题，但实际上 需要十分谨慎。具体示例我们留到相应的习题中再来了解。
 
-- 将宇段里保存的实例直接作为 ge阳r 方法的返回值→习题 2-4 getter   方法是用于返回字段值的方法。
-- 将构造函数的参数中传入的实例直接赋给宇段→习题 2-5
+- **将宇段里保存的实例直接作为 getter方法的返回值**→习题 2-4 getter   方法是用于返回字段值的方法。
+- **将构造函数的参数中传入的实例直接赋给字段**→习题 2-5
 
 
 
@@ -2100,7 +2098,7 @@ java .lang .Str ing 是 immutable 类。 在创建完实例之后，字符串的
 
 
 **表示大数字的 java .math.BigInteger 类**
-java .math .Biglnteger 与 java .math .BigDecimal 都是 immutable类。BigInteger 表示所 有精度的整数，BigDec工mal  则表示所有精度的数。这两个类的实例在赋值之后就不会再发生变化。
+java .math .Biglnteger 与 java .math .BigDecimal 都是 immutable类。BigInteger 表示所有精度的整数，BigDecimal 则表示所有精度的数。这两个类的实例在赋值之后就不会再发生变化。
 
 **表示正则表达式模式的java. util.regex.Pattern 类**
 j ava .ut il . regex . Patte rn 是 immutable 类。Pa t t er n 类表示正则表达式的模式，但即 使在处理模式匹配时，值也不会发生变化 。
@@ -2142,7 +2140,7 @@ java .awt .Color 是 immutable 类。一旦其实例创建好之后 ，j ava .aw
 ### Single Threaded Execution 模式（ 第 l章 ）
 
 
-在 Immutable 模式中，实例的状态不会发生变化，所以无需进行保护。而在 Single Threaded Execu tion 模式中 ，当一个线程正在修改实例状态时 ，不允许其他的线程 来访问该实例。此时会出现如下两种情况之一。
+在 Immutable 模式中，实例的状态不会发生变化，所以无需进行保护。而在 Single Threaded Execu tion 模式中 ，当一个线程正在修改实例状态时 ，不允许其他的线程来访问该实例。此时会出现如下两种情况之一。
 
 - **写入与写入的冲突 （ write-write conflict )**
 
@@ -2174,16 +2172,16 @@ Read-Write Lock 模式也利用了read-read 不会引起 conflict 的特点。�
 
 ### final 的含义
 
-Java  中的 f inal 有多种不同的用途 ，含义也稍有不同。这里我们一起来确认一下。
+Java中的final有多种不同的用途 ，含义也稍有不同。这里我们一起来确认一下。
 
 #### final 类
 
-如果在类的声明中加上 f inal，则表示该类无法扩展 。也就是说，无法创建 final 类的子类。 由于无法创建 final 类的子类，所以final 类中声明的方法也就不会被重写 。
+如果在类的声明中加上final，则表示该类无法扩展 。也就是说，==无法创建 final 类的子类==。 由于无法创建 final 类的子类，所以final 类中声明的**方法也就不会被重写** 。
 
 #### final 方法
 
-如果在实例方法的声明中加上 final ，则表示该方法不会被子类的方法重写 。如果在静态方法 的声明中加上final ，则表**示该方法不会被子类的方法隐藏** （ hide ）。如果试图重写或隐藏 f in a l 方法 ，编译时会提示错误。
-在 Template Method 模式（见附录 G 中的 ［Go月[Yuki伺］ ） 中，有时模板方法会声明为 f inal 方法。
+如果在实例方法的声明中加上final ，则表示该**方法不会被子类的方法重写** 。如果在静态方法 的声明中加上final 则表**示该方法不会被子类的方法隐藏** （ hide ）。如果试图重写或隐藏 f in a l 方法 ，编译时会提示错误。
+在 Template Method 模式（见附录 G 中的 ） 中，有时模板方法会声明为 f inal 方法。
 
 #### final 字段
 
@@ -2233,8 +2231,7 @@ class  Something  {
    }
    ```
 
-
-**==前面已经反复强调.final 字段不可以由 setValue 这样的setter方法再次赋值。==**
+**==前面已经反复强调final 字段不可以由 setValue 这样的setter方法再次赋值。==**
 
 >小知识 ：final 与创建线程安全的实例
 >即使从创建线程安全的实例这个角度来看 ，将字段声明为 f in a l 也是非常重要的。详细内 容请参见附录 B。
@@ -2243,14 +2240,14 @@ class  Something  {
 
 #### final 变量和 final 参数
 
-局部变量和方法的参数也可以声明为 f inal 。f inal 变量只可以赋值一次。 而 f inal 参数不可以赋值，因为在调用方法时 ．已经对其赋值了。
+局部变量和方法的参数也可以声明为 f inal 。f inal 变量只可以赋值一次。 **而 f inal 参数不可以赋值**，因为在调用方法时 ．已经对其赋值了。
 
 
 
 ## 2.7	延伸阅读 2：集合类与多线程
 
 **管理多个实例的接口或类统称为集合** （ col lection ）。例如 ，java.util包中的List接口和ArrayList 类就是最具代表性的集合 。
-Java 中的大部分集合都是非线程安全的 。因此 ．在多个线程操作集合时 ，一定要查看AP！文挡，确认要用的类或接口是否是线程安全的。
+Java 中的大部分集合都==是非线程安全的== 。因此 ．在多个线程操作集合时 ，一定要查看AP！文挡，确认要用的类或接口是否是线程安全的。
 这里，我们通过下面的示例来了解一下多个线程访问集合时的注意事项。
 
 1. 示例 1：非线程安全的 j ava . util .A rra yList 类
@@ -2337,7 +2334,7 @@ public class ReaderThread extends Thread {
 >
 >}
 
-**A r r a yL i st 类 （ 及 迭 代 器 ） 在 被 多个 线 程 同时读 写 而 失 去 安 全 性 时，便 会 抛 出 Con cur ren tModif icationExcept ion 异常**。该运行时 （ runtime ） 的异常用于表示 “执行并发 修改了”。但该异常不过是调查 Bug 根本原因时的提示而己 ，所以编写程序 时并不能依赖于抛出的Concu rrentModif icationExcept ion 异常。
+**ArrayList 类 （及迭代器 ）在 被 多个线程同时读写而 失 去 安 全 性 时，便 会 抛 出 Con cur ren tModif icationExcept ion 异常**。该运行时 （ runtime ） 的异常用于表示 “执行并发修改了”。但该异常不过是调查 Bug 根本原因时的提示而己 ，所以编写程序 时并不能依赖于抛出的Concu rrentModif icationExcept ion 异常。
 执行代码清单 2-4 的程序后，如果抛出如图2-5 所示的 Con curren tModif icat ionExcept ion异常 ，或如图 2-6 所示的 NullPointerException 异常，我们便可知程序失去了安全性。
 
 ```
@@ -2373,7 +2370,7 @@ Exception  in  thread  ”ReaderThread "  java .lang .Nul lPointerExcept ion at 
 
 ### 示例 2 ：利用Collections.synchronizedlist 方法所进行的同步
 
-java .util .ArrayList 是非线程安全的类，**但如果使用 Collections .synchron izedList方法进行同步 ，就能够得到线程安全的实例。** 实际程序如代码清单 2-7代码  清单 2-8 所示。在代码清单 2-7 ，创建的 ArrayList 实例通过 Col lect ions . synchron izedList 方法 进行同步后 ，被保存到了变量 list 中。
+java .util .ArrayList 是非线程安全的类，**但如果使用 Collections .synchronizedList方法进行同步 ，就能够得到线程安全的实例。** 实际程序如代码清单 2-7代码  清单 2-8 所示。在代码清单 2-7 ，创建的 ArrayList 实例通过 Col lect ions . synchron izedList 方法 进行同步后 ，被保存到了变量 list 中。
 
 ```JAVA
 代码清单 2-7	示例 2：通过 Collections.synchronizedlist  方法同步 Arraylist 实例的程序 （ Main.java  ) 
@@ -2390,7 +2387,7 @@ public class Main {
     
 ```
 
-“写” 线程是思式调月号 add 方法和 remove 方法 ，故可沿用示例 l的代码 ，而“读” 钱程是隐 式调用迭代器，故需要修改其代码。如下面这样， list 的增强 for 循环时，使用 synchronized 代码块同步。
+“写” 线程是 add 方法和 remove 方法 ，故可沿用示例 l的代码 ，**==而“读” 线程是隐式调用迭代器，故需要修改其代码==**。如下面这样， list 的增强 for 循环时，使用 synchronized 代码块同步。
 
 ```JAVA
 synchronized(this){
@@ -2441,7 +2438,7 @@ public class WriterThread extends Thread {
     
 ```
 
-运 行 结 果 示 例 如 图 2-7 所 示。Re a d e r Th r e a d 显 示 了 许 多 数 字，但 并 未 抛 ：I\ Concu r ren tModif icat ionException 异常和l Nu llPoin te rException 异常。各编号是跳跃的，这是因为在 ReaderThread 读取之前，WriteTh read 不断改写了其值。
+运 行 结 果 示 例 如 图 2-7 所 示。Re a d e r Th r e a d 显 示 了 许 多 数 字，但 并 未 抛 ：I\ Concu r ren tModif icat ionException 异常和l Nu llPoin te rException 异常。各编号是跳跃的，这是因为在 ReaderThread 读取之前，WriteThread不断改写了其值。
 
 ```java
 图 2-7	示例 2 的运行结果示例
@@ -2469,7 +2466,7 @@ public class WriterThread extends Thread {
 ### 示例 3：使用 copy-on-write 的java.util.concurrent.CopyOnWriteArraylist 类
 
 java.util.concurrent.CopyOnWriteArrayList类是==线程安全==的。与使用 Collections. synchronizedList 方法进行同步不同 ，CopyOnWriteArrayList 类是采用 copy-on-write 技术来避免读写冲突的。
-所谓 copy-on-write ，就是 “写时复制” 的意思。**如果使用 copy-on-write，当对集合执行 “写” 操作时 ．内部已确保安全的数组就会被整体复制 。复制之后 ，就无需在使用迭代器依次读取元素时担心元素会被修改了**。因此，CopyOnWriteArraylist类 （ 及迭代器 ） 绝对不会抛 刷 Concu rren tModif   ica tionException   异常。
+所谓 copy-on-write ，就是 “写时复制” 的意思。**如果使用 copy-on-write，当对集合执行 “写” 操作时 ．内部已确保安全的数组就会被整体复制 。复制之后 ，就无需在使用迭代器依次读取元素时担心元素会被修改了**。因此，CopyOnWriteArraylist类 （ 及迭代器 ） 绝对不会抛 刷 ConcurrentModificationException异常。
 实际的程序如代码清单 2-9 所示 ，其中的 WriterTh read 类和 ReaderTh read 类与示例 1 相同。运行结果示例如 2-8 所示。
 
 代码清单 2-9	示例 3：操作 CopyOnWriteArraylist 类的 Main 类 （ Main.java ) 
@@ -2527,9 +2524,10 @@ public class WriterThread extends Thread {
 ## 2.8	本章所学知识
 
 在本章中，我们学习了Immutable 模式。
-**当一个类的实例创建完成后 ，其状态就完全不会发生变化。这时，该类的方法就算被多个线程 同时执行也没关系 ，所以这些方法也就无需声明为synchronized**。这样一来就可在安全性和生 存性都不丧失的同时提高性能。
+**当一个类的实例创建完成后 ，其状态就完全不会发生变化。这时，该类的方法就算被多个线程同时执行也没关系 ，所以这些方法也就无需声明为synchronized**。这样一来就可在安全性和生存性都不丧失的同时提高性能。
 这就是 Immutable 模式。
-本章 2.6 节介绍了创建 immutable 对象必需的 f inal，而2.7 节介绍了集合与多线程之间的关系。 在 Immutable 模式中，保护类的并不是synchronized ，而是 immutability （ 不可变性）。这样一来 ，保护类的 immutability   就是程序设计人员的工作了。接下来请务必挑战一下下面的练习题。
+
+本章 2.6 节介绍了创建 immutable 对象必需的 final，而2.7 节介绍了集合与多线程之间的关系。 ==在 Immutable 模式中，保护类的并不是synchronized ，而是 immutability （ 不可变性）==。这样一来 ，保护类的 immutability   就是程序设计人员的工作了。接下来请务必挑战一下下面的练习题。
 
 
 
@@ -2539,7 +2537,7 @@ public class WriterThread extends Thread {
 
 1. java .lang .String 类是 immutable 类。√
 
-2. java .lang .StringBu f f er 类是 immutable 类。× 
+2. java .lang .StringBuffer 类是 immutable 类。× 
 
 3. 声明为 f inal 的字段不可以赋值两次。  √ 
 
@@ -2555,7 +2553,7 @@ public class WriterThread extends Thread {
 
 ### 习题 2-2 ( immutability 的确认 ）
 
-某人在阅读 String 类的API 文档时 ，看到一个 replace 方法 ，他这样说道 ：“repla ce 方 法用于替换字符串中的字符。例如，执行代码清单 2-10 的程序后 ，如图 2-9 , BAT 中的 ’ B ＇会替换 为 ’ C ’ ，最终显示为 CAT。但之前说过 Str ing 类符合 Immutable 模式 ，我看不对吧。”
+某人在阅读 String 类的API 文档时 ，看到一个 replace 方法 ，他这样说道 ：“repla ce 方 法用于替换字符串中的字符。例如，执行代码清单 2-10 的程序后 ，如图 2-9 , BAT 中的 ’ B ＇会替换 为 ’ C ’ ，最终显示为 CAT。但之前说过 String 类符合 Immutable 模式 ，我看不对吧。”
 请针对该意见提出你的反驳。
 
 ```java
@@ -2570,10 +2568,10 @@ public class Main {
 
 ------
 
-的确，习题中所示的程序 （ 代码清单 2-10 ） 运行之后，会显示 CA T。但变量 s 中保存的实例内 容并没有被改写 。r ep la ce 方法会**新建一个实例**，用来保存替换后的字符串中的字符，并将该实 例作为返回值 ①
+的确，习题中所示的程序 （ 代码清单 2-10 ） 运行之后，会显示 CA T。但变量 s 中保存的实例内 容并没有被改写 。replace方法会**新建一个实例**，用来保存替换后的字符串中的字符，并将该实 例作为返回值 ①
 用于确认己新建其他实例的程序如代码清单 A2-l 所示 ，其运行结果如图A2-1 所示。
 
->①    不过，当replace  方法的参数中传入的替换前字符相同时 （ 也就是实际上不进行替换时 ），replace 方法就不会创建新的实例 ，而是使用原来的实例 （ this ） 作为返回值。
+>①    不过，当replace  方法的参数中传入的替换前字符相同时 （ 也就是**实际上不进行替换时** ），replace 方法就不会创建新的实例 ，而是使用原来的实例 （ this ） 作为返回值。
 >
 >
 
@@ -2607,7 +2605,7 @@ s != t	←两个实例不一样
 
 ### 习题 2-3 （ 性能比较 ）
 
-代码清单 2-1 l 的程序会将 s y n ch r on i z ed 替换为 Immutable 模式，并测试性能的提高程度。 Synch 类的 toSt ring 方法是 syn chron ized 方法，而NotSynch 类的 toStr ing 方法并不是 syn ch ro n i z ed 方法。请试着从 Ma in 类中循环调用各方法 ，并在你的计算机环境中比较二者的 执行时间。在执行之前，请先预估一下大概会相差多长时间。
+代码清单 2-1 l 的程序会将 s y n ch r on i z ed 替换为 Immutable 模式，并测试性能的提高程度。 Synch 类的 toString 方法是 synchronized 方法，而NotSynch 类的 toString 方法并不是 syn ch ro n i z ed 方法。请试着从 Main 类中循环调用各方法 ，并在你的计算机环境中比较二者的 执行时间。在执行之前，请先预估一下大概会相差多长时间。
 在这里 ，我们使用 System .cu r ren tTimeMillis （ ） ，以毫秒为单位获取当前时刻。调用次
 数 CALL   COUNT 可根据你的计算机环境自行修改。
 
@@ -2664,7 +2662,7 @@ Java编译器的优化或者Java运行环境的不同也会影响时间差的比
 
 ### 习题 2-4 （ 明明没有 setter 方法 ，却不是 immutable 类 ）
 
-下面的userInfo 类 （ 代码清单 2- 12 ） 用于表示用户的信息 。在眩类中 ，info字段为 private final类型 ，也没有 setter方法 ，但userInfo类并不是 immutable 类 ，请问这是为什 么呢？
+下面的userInfo 类 （ 代码清单 2- 12 ） 用于表示用户的信息 。在类中 ，info字段为 private final类型 ，也没有 setter方法 ，但userInfo类并不是 immutable 类 ，请问这是为什 么呢？
 
 ```java
 public final class UserInfo {
@@ -2684,7 +2682,7 @@ public final class UserInfo {
 
 -------
 
-这是因为如果修改了**getInfo方法的返回值 （ StringBuf f er 的实例），info 字段所引用的 实例内容也会发生变化。**
+这是因为如果修改了**getInfo方法的返回值 （ StringBuffer 的实例），info 字段所引用的实例内容也会发生变化。**
 我们实际动手来实现一下修改 Userinf o 实例内容的程序吧 （ 代码清单 A2-2 ）。
 
 ```java
@@ -2723,10 +2721,46 @@ userinfo ; [ User Info: <info name ”Bobby” address ”Alaska ” ]
 
 ```
 
-getInfo方法获取的 in f o 字段中保存的**实例并不是 String 实例，而是StringBuf f er 实 例**。St r ingBu f f e r 类与 Str ing 类不同，包含修改内部状态的方法 ，所以 in f o 宇段的内容也 可以被外部修改。
+getInfo方法获取的 info 字段中保存的**实例并不是 String 实例，而是StringBuf f er 实例**。St r ingBu f f e r 类与 Str ing 类不同，包含修改内部状态的方法 ，所以 in f o 宇段的内容也 可以被外部修改。
 **String 类的 replace 方法并不会修改实例本身 ，但Str ingBuf f er 类的 replace 方法却 会修改实例本身**。这是因为 StringBu f f er 类是 mutable 类。
-由于 i n f o 字段声明为了 f i n a l ，所以 in f o 字段的值本身 （ 指向的实例） 并不会改变 。但
-扣f o  字段所指向的实例的状态却有可能改变。
+由于info字段声明为了 final，所以 in f o 字段的值本身 （ 指向的实例） 并不会改变 。但info字段所指向的实例的状态却有可能改变。
+
+（如果将userinfo类中的stringbuffer改成string，则不会有问题）
+
+```
+package my.test;
+public class UserInfo {
+    private final String info;
+    public UserInfo(String name, String address) {
+        this.info = new StringBuffer("<info name=\"" + name + "\" address=\"" + address + "\" />").toString();
+    }
+    public String getInfo() {
+        return info;
+    }
+    public String toString() {
+        return "[ UserInfo: " + info + " ]";
+    }
+
+
+
+    public static void main(String[] args) {
+        // 创建实例
+        UserInfo userinfo = new UserInfo("Alice", "Alaska");
+        // 显示
+        System.out.println("userinfo = " + userinfo);
+        // 修改状态
+        String info = userinfo.getInfo();
+      //  info.replace(12, 17, "Bobby");  // 12到17是字符串"Alice"的位置
+        info = " <info name=\"Bobby\" address=\"Alaska\"";
+        // 再次显示
+        System.out.println("userinfo = " + userinfo);
+
+        System.out.println(""+  info.hashCode());
+        System.out.println(""+ userinfo.getInfo().hashCode());
+    }
+}
+
+```
 
 
 
@@ -2781,7 +2815,7 @@ public class Point {
 ---
 
 Line 类==不是 immutable 类==。
-我们先从 Line 类使用的 Poin t 类看起。由于 Poin t 类的 x 字段和 y 字段都是 public ，且不是 f inal ，所以这两个字段的值**可以随意改写**。因此，Poin t 类是 **mutable 类。**
+我们先从 Line 类使用的 Point 类看起。由于 Point 类的 x 字段和 y 字段都是 public ，且不是 f inal ，所以这两个字段的值**可以随意改写**。因此，Poin t 类是 **mutable 类。**
 接下来，我们再来关注一下 Line  类的第二个构造函数 。
 
 ```
@@ -2822,8 +2856,8 @@ line =  [ Line:  (150，创刊 150, 250)  I	←直线移动了
 
 
  immutable 类的方法
-**怎样才能将 L i n e 类修改为 imm utable 类呢**？当然，如果将Po in t 类修改为 immutable 类，
-L i n e 类也就会随之成为 immutable 类。例如 ，将P o i n t 的 x 字段和 y 字段修改为 p u b l ic  f inal 类型 ，就可以实现了。
+**怎样才能将 L i n e 类修改为 imm utable 类呢**？当然，如果将Point类修改为 immutable 类，
+L i n e 类也就会随之成为 immutable 类。例如 ，将Point 的 x 字段和 y 字段修改为 public final类型 ，就可以实现了。
 另外，无论 Point 是 immutable 类还是 mutable 类，我们都可以将 Line 修改为 immutable 类， 比如像代码清单 A2-4 这样修改。
 
 ```java
@@ -2835,8 +2869,8 @@ public class Line {
         this.endPoint = new Point(endx, endy);
     }
     public Line(Point startPoint, Point endPoint) {
-        this.startPoint = new Point(startPoint.x, startPoint.y);
-        this.endPoint = new Point(endPoint.x, endPoint.y);
+        this.startPoint = new Point(startPoint.x, startPoint.y);//
+        this.endPoint = new Point(endPoint.x, endPoint.y);//
     }
     public int getStartX() { return startPoint.x; }
     public int getStartY() { return startPoint.y; }
@@ -2969,7 +3003,7 @@ public final class ImmutablePerson {
 ```
 
 验证代码清单 2-16 中的 ImmutablePerson 类是否欠缺安全性的程序如代码清单 A2-5 所示。 这里 ，主线程连续不断地改写 MutablePerson 的实例。为了便于检查 ，我们将name 字段和address 字段设置为了相同的字符串（ 数字串）。
-而 C r a c k e r T h r e a d 类则基于传人的 M u t a b l e Pe r s o n 实例一个接一个地创建新的 ImmutablePer son 实例。下面来检查这些创建的 ImmutablePerson 实例的 name 和 address 的值是否一直相等 （ 代码清单 A2-5 ）。
+而CrackerThread类则基于传人的MutablePerson实例一个接一个地创建新的 ImmutablePerson 实例。下面来检查这些创建的 ImmutablePerson 实例的 name 和 address 的值是否一直相等 （ 代码清单 A2-5 ）。
 
 ```java
 import person.MutablePerson;
@@ -3039,12 +3073,12 @@ public final class ImmutablePerson {
         this.address = address;
     }
     public ImmutablePerson(MutablePerson person) {
-        synchronized (person) {
+        synchronized (person) { ///
             this.name = person.getName();
             this.address = person.getAddress();
         }
     }
-    public MutablePerson getMutablePerson() {
+    public MutablePerson getMutablePerson() {//
         return new MutablePerson(this);
     }
     public String getName() {
@@ -3073,6 +3107,6 @@ public final class ImmutablePerson {
 ## 3.1	Guarded  Suspension  模式
 
 当你正在家换衣服时·，门铃突然响了，原来是邮递员来送邮件了 。这时 ，因为正在换衣服而不 去，所以只能先喊道 “请稍等一下” ，让邮递员在 门口稍等一会儿。换好衣服后 ，才说着 “让您久 等了” 并打开门。
-本章，我们将学习 Guarded    Suspension  模式。G uarded  是被守护 、被保卫 、被保护的意思、 Suspension 则是 “暂停” 的意思。**如果执行现在的处理会造成 问题，就让执行处理的线程进行等待**--------这就是 Guarded Suspension 模式。
+本章，我们将学习 Guarded    Suspension  模式。Guarded  是被守护、被保卫 、被保护的意思、 Suspension 则是 “暂停” 的意思。**如果执行现在的处理会造成 问题，就让执行处理的线程进行等待**--------这就是 Guarded Suspension 模式。
 Guarded Suspension 模==式通过让线程等待来保证实例的安全性==    这正如同你让邮递员在门 口等 待 ，以保护个人隐私一样。
 Guarded Suspension 模式还有 guarded  wait 、spin  lock 等称称呼 ，关于详细内容 ，后文将进行说 明（见本章 3.4 节中的 “各种称呼” 部分 ）。
