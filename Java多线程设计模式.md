@@ -3110,3 +3110,1160 @@ public final class ImmutablePerson {
 本章，我们将学习 Guarded    Suspension  模式。Guarded  是被守护、被保卫 、被保护的意思、 Suspension 则是 “暂停” 的意思。**如果执行现在的处理会造成 问题，就让执行处理的线程进行等待**--------这就是 Guarded Suspension 模式。
 Guarded Suspension 模==式通过让线程等待来保证实例的安全性==    这正如同你让邮递员在门 口等 待 ，以保护个人隐私一样。
 Guarded Suspension 模式还有 guarded  wait 、spin  lock 等称称呼 ，关于详细内容 ，后文将进行说 明（见本章 3.4 节中的 “各种称呼” 部分 ）。
+
+
+
+## 3.2示例程序
+
+我们先来看一下示例程序。在这个程序中 ，一个线程 （ Client Thread ） 会将请求 （ Request )的实例传递给另一个线程 （ ServerThread ）。这是一种最简单的线程间通信
+
+表 3-1       类的 览表
+
+ 
+
+| 名字         | 说明             |
+| ------------ | ---------------- |
+| Request      | 表示一个请求的类 |
+| RequestQueue | 依次存放请求的类 |
+| ClientThread | 发送请求的类     |
+| ServerThread | 接收请求的类     |
+| Main         | 测试程序行为的类 |
+
+ 
+
+示例程序的时序因如图 3-1 所示。
+
+在该图中，: Cl ientThread 与 : ServerThread 边框都是以粗线表示的。粗框长方形用 于表示该对象与线程有关联 。也就是说 ．该对象能够 主动调用方法 （ 这是 UML 的标识法 ）。我 们将: Cl ientThread 和 : ServerThread这样的对象称为主动对象 （ active object ），将:RequestQueue 这样的对象称为被动对象 （ passive object ）。
+
+![](picture/java多线程设计模式/3-1示例程序的时序图.png)
+
+### **Request 类**
+
+Request 类 （ 代码清单 3-1 ） 用于表示请求。虽说是请求，但由于只是用于表示 Cl ient Th read 传边给 Se r ve r T h r ea d 的实例，所以不提供什么特殊的处理 。Re q u e st 类只有一个名称属性 ( name 字段 ）。
+
+```java
+public class Request {
+    private final String name;
+    public Request(String name) {
+        this.name = name;
+    }
+    public String getName() {
+        return name;
+    }
+    public String toString() {
+        return "[ Request " + name + " ]";
+    }
+}
+
+```
+
+### **RequestQueue 类**
+
+R e qu e st Qu e u e 类 （ 代码清单 3-2 ） 用于依次存放请求 。该类中定义了 ge t Re qu es t 和putReques t 这两个方法。
+
+- getRequest 方法
+
+  getRequest 方法会取出最先存放在 RequestQueue 中的一个请求 ，作为其返回值。如果一 个请求都没有 ，那就一直等待 ，直到其他某个线程执行 pu tRequest 
+
+- putRequest 方法put Request 方法用于添加一个请求。当线程想要向 RequestQueue 中添加 Request 实例 时，可以调用该方法
+
+
+总的来说，R e qu e s t Qu eu e 通过 p u t R e qu e st 放入 Re q u e st 实例，并按放入顺序使用 getRequest 取出 Request 实例。这种结构通常称为队列 （ queue ） 或 FIFO ( First ln First Out ，先 进先出）。例如，在银行窗口前依次等待的队伍就是队列的一种。
+
+```java
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+
+public class RequestQueue {
+    private final BlockingQueue<Request> queue = new LinkedBlockingQueue<Request>();
+    public Request getRequest() {
+        Request req = null;
+        try {
+            req = queue.take();
+        } catch (InterruptedException e) {
+        }
+        return req;
+    }
+    public void putRequest(Request request) {
+        try {
+            queue.put(request);
+        } catch (InterruptedException e) {
+        }
+    }
+}
+
+```
+
+关于代码清单 3-2 ，我们将在后文详细解读 ，这里先列出一些要点。
+
+- getRequest 、putRequest  都是 synchronized方法
+- getRequest 的开头有一个 whi le 语句 ，用于检查条件是否成立
+- 在 while 语句中执行 wait
+- 执行完 whi le 语句之后 ，程序才会执行实际想要的处理（ remove )
+- 在 putRequest 中执行 notifyAl l
+
+### **ClientThread 类**
+
+ClientThread 类（代码清单 3-3 ） 用于表示发送请求的线程。ClientThread **持有 Requ estQueue 的实例** （ r equ est Qu eu e ），并连续调用该实例的 pu t Re qu es t ，放入请求。请求的名称依次为 ”No . ” 、” No .l” 、”N o . 2 ”·
+为了错开发送请求 （ 执行 pu tRequest ） 的时间点，这里使用 j ava . u t il .Random 类随机生 成了 到 1000 之间的数，来作为sleep 的时间（ 以毫秒为单位 ）。
+
+```java
+import java.util.Random;
+
+public class ClientThread extends Thread {
+    private final Random random;
+    private final RequestQueue requestQueue;
+    public ClientThread(RequestQueue requestQueue, String name, long seed) {
+        super(name);
+        this.requestQueue = requestQueue;
+        this.random = new Random(seed);
+    }
+    public void run() {
+        for (int i = 0; i < 10000; i++) {
+            Request request = new Request("No." + i);
+            System.out.println(Thread.currentThread().getName() + " requests " + request);
+            requestQueue.putRequest(request);
+            try {
+                Thread.sleep(random.nextInt(1000));
+            } catch (InterruptedException e) {
+            }
+        }
+    }
+}
+
+```
+
+### **ServerThread 类**
+
+Ser ve r Th read 类 （ 代码清单 3-4 ） 用于表示接收请求的线程。**该类也持有** Reque st Qu eu e
+的实例 （ requestQueue ）。Serve rThread 使用 getRequest 方法接收请求。 与 Client Thread 一样，ServerTh read 也使用随机数进行 sleep。
+
+```java
+import java.util.Random;
+
+public class ServerThread extends Thread {
+    private final Random random;
+    private final RequestQueue requestQueue;
+    public ServerThread(RequestQueue requestQueue, String name, long seed) {
+        super(name);
+        this.requestQueue = requestQueue;
+        this.random = new Random(seed);
+    }
+    public void run() {
+        for (int i = 0; i < 10000; i++) {
+            Request request = requestQueue.getRequest();
+            System.out.println(Thread.currentThread().getName() + " handles  " + request);
+            try {
+                Thread.sleep(random.nextInt(1000));
+            } catch (InterruptedException e) {
+            }
+        }
+    }
+}
+
+```
+
+### Main 类
+
+Main 类 （ 代码清单 3-5 ） 会首先创建 RequestQueue 的实例 （ requestQueue ），然后分别创 建名为 Alice 的实例 Clien tThread 和名为 Bobby 的实例 ServerThread ，并将 requestQueue 传给这两个实例 ．最后执行 start。
+3141592L 和 6535897L 只是用来作为随机数的种子，并没有什么特别意义。
+
+```java
+public class Main {
+    public static void main(String[] args) {
+        RequestQueue requestQueue = new RequestQueue();
+        new ClientThread(requestQueue, "Alice", 3141592L).start();
+        new ServerThread(requestQueue, "Bobby", 6535897L).start();
+    }
+}
+
+```
+
+运行结果示例如图 3-2 所示。从图中可以看 剧 ，A l i c e 会一直发送请求 （ r equ e s t s ），而Bobby 则会不停地处理请求 （ hand les ）。
+
+
+
+###  **java. util.Queue 与 java. util.Linkedlist 的操作**
+
+在详细解读代码清单 3-2 之前，我们先来整理一下提供 队列功能的 j ava .u t il .Qu eue 接口 的操作。qu eu e 字段实际保存的是实现 Qu eue 接口的 j ava . u t il . L in kedL ist 类的实例。 LinkedList 类表示串状连接在一起的对象集合 ，可以作为通用链表结构使用 ，但示例程序只使用 了LinkedList 类的如下三个方法。
+
+**+Request remove()**
+该方法用于移除队列的第 一个元素 ，并返回该元素 。如果队列中一个元素都没有 ，则抛「H
+java .util .NoSuchElemen tExcept ion 异常 （ 该元素不存在 ）。
+
+**+boolean offer(Request req)**
+该方法用于将元素 req 添加到队列末尾 。
+
+**+Request peek()**
+如果队列中存在元素，则该方法会返回头元素 ；如果为空 ，则返回null。**该方法并不移除元素。**
+j ava . u t i l . L in kedL ist 是一个可以指定元素类型的泛型类 （ generic class ）。该示例程序
+（ 代码清单 3-2 ） 采用 Lin kedList<Request ＞ 这种写法来表示元素的类型为 Request 。Qu eue 接口也一样．是用 Queue<Request ＞ 这种写法表示元素的类型为 Request 。“＜” 与 “＞” 之间的 部分称为类型参数。
+另外 ，j ava .util .LinkedList 类是非线程安全的。关于类库中提供的线程安全的队列的示 例，本章 3.4 节中的 “使用 java .util .concur ren t .LinkedBlock工呵Queue 的示例程序” 部 分将为大家介绍。
+
+
+
+**getRequest 详解**
+
+```java
+public synchronized Request getRequest(){
+    while(queue.peek() == null){
+        tyr{
+            wait();
+        }catch(InterruptedException e){}
+    }
+    reutrn queue.remove();
+}
+```
+
+**施加守护条件进行保护**
+首先，我们来思考一下 ge t Re q u e st 方法应该执行的 ‘·目标处理” 是什么。该方法的目的是 “从 queue 中取出一个 Request 实例” ，也就是执行下面这条语句
+
+queue.remove  ( )
+
+但是，为了安全地执行这条语句 ，必须满足如下条件。。
+
+queue.peek ( )    !=  null
+
+该条件就是  “存在想要取出的元素”。**这种必须要满足的条件就称为  Guarded    Suspension   模式的 守护条件 （ guard  condition ）。**
+
+queue .peek ( )    != null	·守护条件
+
+仔细查看 getRequest 中的 while 语句的条件表达式，你会发现 wh ile 语句的条件表达式是 守护条件的逻辑非运算。**这条 while 语句会保证在 remove 方法被调用时，守护条件一定是成立的。**
+
+queue.peek ()   ==  null	·守护条件的逻辑非运算
+
+当守护条件的逻辑非运算满足时，也就是说守护条件不成立时----------绝对不会继续执行  while之后的话句 （ 调用 remove ）。
+
+
+
+
+
+**不等待和等待的情况**
+当线程执行到 while 语句时，需要考虑守护条件成立与不成立这两种情况 。 当守护条件成立时 ，线程不会进入while 语句内，而是立即执行 while 的下一条语句，调用remove 方法。这时不会执行到 wait ，所以线程也就不会等待。 当守护条件不成立时 ，线程会进入while  语句内，执行 wait ，开始等待。 
+
+
+
+**执行wait，等待条件发生变化**
+当守护条件不成立时 ，线程执行wait ，开始等待 ，那到底在等待什么呢？
+“**当然是在等待 notif y / notif yAll** 喽。” 对，确实如此。**正在 wait 的线程如果不被 not if y/  no t i f yA l l，便会一直待在等待队列中。**不过，我们需要思考一下更深层的含义。线程真正在等待 的是实例状态的变化 。线程之所以等待 ，是因为守护条件未被满足 。也就是说该守护条件进行了保 护，从而阻止了线程继续向前执行。**线程等待的是实例状态发生变化  ，守护条件成立的时刻。**
+这里又眼里唠嗦地说了一大堆理所当然的事情  ，因为这部分内容真的需要读者多加留心。只有 知道 “线程在等待什么” ，才会明白 “应该何时执行 not if y/ not if yAll ”。
+在守护条件成立时 ，正在w a i t 的线程希望被 n o t i f y / n o t i f y A l l。因为只有在这时 ，while 后面的语句才能够执行。
+
+
+
+**执行到 while 的下一条语句时一定能确定的事情**
+下面继续解读 getRequest 方法。
+假如 wh ile 的下一条语句肯定会执行，那么执行时 ，while 语句的守护条件一定是成立的。 也就是说 ，调用 remove 方法时 ，下述表达式一定是成立的。
+queue.peek() == null	守护条件
+
+由于 “queue中存在可供取出的元素”，所以remove 方法绝对不会抛出NoSuchElementException异常。
+这就是 getRequest   方法。 整个结构可以整理如下。 
+
+```
+while(守护条件的逻辑非){
+    使用wait进行等待；
+}
+执行目标处理
+```
+
+在执行目标处理之前，守护条件一定是成立的。我们将执行**某个处理之前必须满足的条件称为 前置条件 （ precondition ）。守护条件就是 “目标处理” 的前置条件。**
+
+
+
+**putRequest 详解**
+下面是 putRequest 方法 ，这个方法比较短．很快就能读完 。
+
+```java
+public synchronized void putRequest(Request request){
+    queue.offer(request);
+    notifyAll();
+}
+```
+
+
+这段处理执行 of f er 方法 ，向 queue 的末尾添加一个请求 （ request ）。 **这时 ，queue  中至少存在一个可供取出的元素 。**因此，下面的表达式为真。
+
+queue .peek ( )   != nu ll
+
+在g et Requ e st 中，正在 wa it 的线程等待的是什么呢？对 ，正是这个条件 ，即守护 条件的成立。那么，这里就来执行 notifyAll 吧。这就是 pu tRequest 方法。
+
+
+
+**synchronized 的含义**
+前面我们解读了 getRequ est 方法和 pu tRequest 方法．这两个方法都是 synchronized方法。
+女IJ 1.7 节所讲 ，当看到 synchroni z ed 时，我们需要思考一下 “这**==个 synchron ized 在保护 着什么==**”。在这里 ，synchronized保护**的是 qu eu e 字段** （ L i n k ed L ist 的实例 ）。例如 g e t Req u es t 方法中的如下两个处理就必须确保同时 “只能由一个线程执行”。这就是 Single Threaded Execution 模式 （ 第 l章）。
+
+- 判断 queue 字段中是再存在可供取出的元素
+- 从 queue 字段中取出一个元素
+
+
+
+**wait 与锁**
+对于还不熟悉 Java 中wa it 方法的运行的读者 ，这里再补充说明一下。
+假设**线程要 执行某个实例的 w a it 方法。这 时，线程必须获取该实例的锁**。上 面 的
+**synchron ized 方法巾，wait 方法被调用时，获取的就是 this 的锁。线程执行 t his 的 wa it 方法后 ，进入 this 的等待队列，并释放持有的 this 锁。n ot if y 、not if yA ll 或 in t e r r up t 会让线程退 出等待队列 ，但在实际地继续执行处理之 前．还必须再获取 this 的锁。**
+关于上述这些线程的操作，序章l   巾的 11.6 节已经进行 了详细讲解 。如果你已经忘记了，就请 翻到前面再复习一下吧。这并不是什么高级知识，只是  Java       线程的基础知识，请务必牢记。
+
+
+
+## 3.3 Guarded Suspension 模式中的登场角色
+
+在 Guarded  Suspension 模式中有以下登场角色。
+
+### +GuardedObject   （ 被守护的对象 ）
+
+GuardedObject 角色是一个持有被守护的方法 （ guardedMethod ） 的类。**当线程执行 guardedMethod 方法时 ，若守护条件成立 ，则可以立即执行；当守护条件不成立时 ，就要进行等待**。守护条件的成立与否会随着 GuardedObject角色的状态不同而发生变化。
+除了guardedMethod 之外，GuardedObject  角色还有可能持有其他**改变实例状态 （ 特别是改 变守护条件 ） 的方法** （ stateChangingMethod   ）。
+在 Java 中，guardedMethod 通过 while 语句和 wait 方法来实现，stateChangingMethod则通过 notif y / notif yAll 方法来实现。
+在示例程序中，由RequestQueue 类扮演此角色。getRequest 方法对应 guardedMethod, putRequest 方法则对应 stateCha ngingMethod 。
+Guarded Suspension 模式的类图和Timethreads  图分别如阁 3-3 和阁 3-4 所示。
+
+![](picture/java多线程设计模式/3-3Guarded Suspension 模式的类图.png)
+
+
+
+## 3.4 拓展思路的要点
+
+
+
+### **加条件的 synchronized**
+
+**在 Single Threaded Execution 模式，只要有一个线程进入临界区，其他线程就无法进入 ，只能等待。**
+**而在 Guarded Suspension 模式中 ，线程是否等待取决于守护条件**。Guarded Suspension 模式是在 Single Threaded Execution 模式的**==基础上附加了条件而形成的==** 。也就是说 ，Guarded Suspension 模式 是类似于 “附加条件的 synch ronized” 这样的模式。
+
+
+
+### **多线程版本的 if**
+
+当然，**单线程程序中并不需要 Guarded Suspension 模式**。在单线程中 ，执行操作的主体线程只有一个。如果该唯一线程进入等待状态 ，就没有线程来改变实例的状态了。因此，如果实例的状态 “现在” 不确切 ，那无论线程等待到什么时候 ，也都是持续保持这种状态。
+**在单线程程序中，守护条件的检查仅使用 if语句就可以 了**。 这样说来 ，Guarded Suspension 模式就像是 “多线程版本的 if ”
+
+
+
+### **忘记改变状态与生存性**
+
+正在 w a it 的线程每次被notify/notifyAll 时都会检查守护条件。不管被notify/notifyAll多少次 ，如果守护条件不成立 ，线程都会随着 while 再次 wait。
+如果程序错误 ，没有修改 GuardedObject  角色的状态的处理 ，那么守护条件永远都不会成立。 这时 ，不管执行多少次notify/notifyAll，线程处理都无法继续 ，程序也就失去了生存性。
+wait 一段时间之后，如果还没有 notify/notifyAll ，我们或许就想中断处理。在这种情 况下 ，可以在调用 w a it 方法 时，在参数中指定超时 （ timeout ） 时间。详细内容将在第 4 章 "Balking 模式” 的 4.6 节讲解。
+
+### **wait 与 notify/notifyAll 的责任 ［ 可复用性 ］**
+
+仔细查看示例程序，你会发现**wait/notifyAll只出现在 RequestQueue 类中**，而并未出现在 ClientThread 、ServerThread 、Main类巾。Guarded Suspension 模式的实现封装在 RequestQueue类中。
+这种将wait/notifyAll隐藏起来的做法对 RequestQueue 类的可复用性来说是非常重要 的。这是因为 ，使用RequestQu eue 的其他类无需考虑 wa it 或 not if yA ll 的问题，只要调用 getRequest 方法或 pu tRequest 方法就行了。
+
+
+
+### **各种称呼**
+
+与 Guarded  Suspension 模式类似的处理有着各种不同的称呼。另外，参考文献或上下文不同时， 即使称呼相同，也可能存在不同的含义。因此，下面介绍一下各处理的称呼及其含义 ，供大家参考。
+
+它们的共同特征有如下三点。
+
+- 存在循环
+- 存在条件检查
+- 因为某种原因而等待
+
+
+
+#### +guarded suspension
+
+“被守护而暂停执行” 的含义。该名称并不体现其实现方法。
+
+#### +guarded wait
+
+“被守护而等待” 的意思。其**实现方法为线程使用 wa it 进行等待，被notify/notifyAll后 ，再次检查条件是否成立。由于线程在使用 w a i t 进行等待的期间是待在等待队 列中停止执行 的，所以并不会浪费 Java 虚拟机的处理时间。**
+
+```
+等待端的示例
+while(!ready){
+    wait();
+}
+唤醒端的示例
+ready=true;
+notifyAll();
+
+
+```
+
+#### +busy wait
+
+“忙于等待” 的意思。**其实现方法为线程并未使用 w a it 进行等待，而是执行 y ie ld （ 尽可能 地将优先级让给其他线程 ） 的同时检查守护条件。由于==等待端的线程也是在持续运行==的，所以会浪 费Java 虚拟机的时间**。yield   是 Thread  类的静态方法①  
+
+>① Thread .yield 并==不会释放锁== ，所以这段代码==不可以写在 synchronized 中==。另外 ，ready 字段 必须声明为 volatile
+>
+>
+
+```
+等待端的示例
+while(!ready){
+    Thread.yield();
+}
+唤醒端的示例
+ready=true;
+```
+
+
+
+#### +spin lock
+
+“通过旋转来锁定” 的意思。指的是在条件成立之前，通过w h i le 循环 “旋转” 等待的情形。 spin lock 在使用上有时与 guarded wait 相同（ 见附录 G 中的 ［Holub00］ ），有时与 busy wait 相同。另 外，有时虽然一开始通过 busy wait 方式进行等待，但是之后会切换到 guarded  wait 方式 （ 见附录 G 中的 ［Lewis00］ ）。有些硬件层实现的同步机制也称为 spin lock。
+
+
+
+#### +polling
+
+“进行舆论调查”   的意思，即反复检查某个事件是否发生，若发生，则执行相应处理的方式（ 见附录 G 中的 ［Lea］ ）。
+
+
+
+
+
+#### 使用 java.uti l.concurrent.LinkedBlocki ngQueue 的示例程序
+
+​       代码清单 3-2 使用 java.util.LinkedList类和 Guarded Suspension 模式构成了RequestQueue 类。实际上，J2SE 5.0 的 java.util.concurrent 包中提供了与该 **RequestQueue 类功能相同的一个类 那就是java.util.concurrent. LinkedBlockingQueue 类**。该类实现了 java.util.concurrent .BlockingQueue 接口。
+​	采用 Lin kedBlock ingQueue 时，示例程序中的 RequestQueue 类可以简化为如代码清单3-6 所示的代码。这里使用的take方法和put方法都是BlockingQueue 接口中声明的方法。**take 方法用于 “取出队首元素” ，put方法则用于 “向队列末尾添加元素”。当队列为空时，若调 用 ta ke 方法便会进行 wait ，这与代码清单 3-2 相同。**
+**由于 take 方法和 put 方法已经考虑了互斥处理** ，所以getRequest 方法和 putRequest 方 法也就无需声明为synchronized方法。==LinkedBlockingQueue类中使用了 Guarded Suspension  模式，能够保证线程安全==。
+
+```java
+代码清单 3-6	使用java.util.concurrent.Lin创BlockingQueue 类编写的RequestQueue 类（ RequestQueue .java )
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+
+public class RequestQueue {
+    private final BlockingQueue<Request> queue = new LinkedBlockingQueue<Request>();
+    public Request getRequest() {
+        Request req = null;
+        try {
+            req = queue.take();
+        } catch (InterruptedException e) {
+        }
+        return req;
+    }
+    public void putRequest(Request request) {
+        try {
+            queue.put(request);
+        } catch (InterruptedException e) {
+        }
+    }
+}
+
+```
+
+java.util包中的 Queue 接口与 LinkedList 类 ，以及 j ava .util .comcur ren t 包中的BlockingQueue 接口与 LinkedBlockingQueue 类之间的关系类图如图 3-5 所示。
+
+![](picture/java多线程设计模式/3-5BlockingQueue 接口与 LinkedBlockingQueue 类的类图.png)
+
+
+
+## 3.5	相关的设计模式
+
+Guarded   Suspension  模式在许多与并发性相关的模式中都有所使用。
+
+
+
+### Single Threaded Execution 模式 （ 第 l章）
+
+ 	“检查守护条件的部分” 和 “ 检查后修改 （ 设置 ） 状态的部分” 都使用了 Single Threaded Execution 模式。检查和设置等一连串处理都必须单线程执行。**这是因为在检查之后、设置之前 ， 其他线程不可以执行检查。检查和设置都必须是原子操作。**
+
+
+
+### Balking 模式 （ 第 4 章）
+
+在 Guarded   Suspension  模式中，当守护条件不成立时，线程会一直等待，直至守护条件成立为止。 而在 Balking 模式中 ，**线程不会等待守护条件成立 ，而是直接返回**。
+
+
+
+### Producer-Consumer 模式 （ 第 5 章）
+
+在 Producer-Consumer 模式中，Producer 角色放置数据时，以及Consumer 角色获取数据时，都会使用 Guarded Suspension 模式。
+
+
+
+### Future 模式 （ 第 9 章）
+
+在 Future 模式中 ，当线程想要获取目标信息 ，而目标信息还未准备好时 ，则使用 Guarded Suspension 模式进行等待。
+
+
+
+## 3.6	本章所学知识
+
+在本章中．我们学习了Guarded  Suspension 模式。
+==**该模式中存在一个持有状态的对象。该对象只有在自身的状态合适时，才会允许线程执行目标处理。==**
+为此 ，我们需要首先将**对象的合适状态表示为 “守护条件”**。然后 ，在执行目标处理之前 ，检查守护条件是否成立 。**只有当守护条件成立时 ，线程才会执行目标处理 ；而当守护条件不成立时 ， 线程就会一直等到成立为止。**
+Java 中是使用 w h i l e 语句来检查条件 ，使用w a i t 方法来执行等待的。当条件发生变化时 ， 使用 notify/ notifyAll 方法发出通知 。
+这就是 Guarded Suspension 模式。 好了，接下来做一下练习题吧。
+
+
+
+## 3.7	练习题
+
+### 习题 3-1 （ 基础知识测试 ）
+
+阅读下面关于示例程序 （ 代码清单 3-1	代码清单 子5 ） 运行的内容，叙述正确请打〉，错误请 打×。
+
+1. getRequest  和 putRequest  是由不同的线程调用的。
+
+   √  getRequest  由 ServerThread 调用，而putRequest 则由Client Thread调用。
+
+2. RequestQueue  的实例创建了两个。
+
+   ×   Req u est Qu eu e 的实例仅有 Ma in 类创建的那一个 ，该实例由 C lien t T h r ea d 和
+   ServerThread 共享。
+
+3. getRequest 中的 remove 方法被调用时，queue .peek ()!=  null 的值一定是 true。
+
+   ==√==   queue  .peek ()!=  null 是守护条件。Guarded Suspension 模式会确保执行目标处理 时，守护条件一定是成立的。
+
+4. getRequest 中的 wait 方法被调用时，queue .peek ()	!= nu ll 的值一定是 f alse。 
+
+   ==√==  当守护条件不成立时 ，wait 方法才会被调用。
+
+5. Client Thread 线程正在 执行 pu tRequest 时，ServerThread 线程是不运行的。
+
+   ==×== Server Th read 线程有时是运行的，有时是不运行的。如果 Server Th read 线程执 行 ge t R equ est ，则会获取不到锁并发生阻塞。如果 Se r v e r Th r ead 线程执行 wait ，则会停在等待队列中。如果ServerThread 线程执行 sleep，则会在指定时 间内停止。但除此之外 ServerThread 线程是可以自由运行的。
+
+6. 线程调用 getRequest 中的 wa it 方法后会释放锁 ，并进入queue 的等待队列。
+
+   √  ==×== **进入的不是 queue ( Lin kedList 类的实例） 的等待队列，而是 this ( RequestQueue 类的实例） 的等待队列。**
+
+7. putRequest 方法中的 notif yAll()；语句与 queue .notif yAll()的含义是等同的。
+
+     ==×==  notifyAll()与this.notifyAll()的含义是等同的 ，而不是queue.notifyAll()
+
+
+### 习题 3-2 ( notifyAll 的位置 ）
+
+假设将示例程序中 RequestQueue 类 （ 代码清单 3-2 ） 的 putRequest 方法改为如代码清单 3-7 所示的代码 （ 在执行 of f er 之前先执行 notifyAll ）。那么，修改后的 RequestQueue 类能安全运行吗？为什么？
+
+```java
+代码清单 3-7	先执行notifyAll的 putRequest 方法 
+public synchronized void putRequest(Request request){ 
+    notifyAll();
+    queue.offer(request);
+}
+```
+
+
+
+---------------
+
+**即使先执行notifyAll ，RequestQueue 类也会安全运行。**
+在执行notifyAll 时，参 数 r equ e st 还 没有 添 加 到 qu eu e 中。不过 ，由于执行 not i f yAll 的线程持有着 t h is 的锁，所以执行 not if yAll 之后，==从等待队列中退出的其他线 程会在获取锁时阻塞==。因此，其他线程的操作实际上并没有什么进展 （ 也不会检查守护条件 ）。
+
+而执行 notif yAll 的线程会在执行 of f er 之后 ，从putRequest 返回。这时，t his 的锁 才会被释放 。之后，阻塞中的其他线程 （ 之一 ） 会获取 t h is 的锁，继续执行操作（ 首先会检查守 护条件）。
+因此，无论 pu tRequest  中两条语句的顺序如何，RequestQueue 类都能安全运行。 不过，将 not if yAll  写在最后更容易理解 ，所以建议在编程时采用这样的写法。
+
+
+
+
+
+### 习题 3-3 （ 加上调试输出 ）
+
+从图 3-2  可以看出 ，ClientThread   （ 代码清单 3-3 ） 发送的请求确实依次被 ServerThread
+（ 代码清单 3-4 ） 处理了，但我们却并不清楚 wait 方法和 not if yAll 方法是否是按预期调用的。 请在 RequestQueue  类中加上调试输出 ，查看程序是否是按预期运行的。
+
+-----
+
+首先，我们来具体思考一下所谓 “按预期运行” 到底是怎样的运行。
+
+- 调用 getRequest 后 ，若 queue .peek ()	!= null ，线程 Bobby 则 wait 。
+
+- 执行 pu tRequest 后 ，线程 Alice 会执行 notifyAll 0
+- 执行 not if yAll 后 ，正在 wait 的线程 Bobby 则停止 wa it。
+
+于是，我们试着在 wa it （） 的前后 ，以及执行 notif yAll （ ） 的地方加上调试输出（ 代码清单
+A3-I ）。
+
+```java
+代码清单 A3-1	加上调试输出的 RequestThread 类（ RequestQueue.java ) 
+import java.util.Queue;
+import java.util.LinkedList;
+
+public class RequestQueue {
+    private final Queue<Request> queue = new LinkedList<Request>();
+    public synchronized Request getRequest() {
+        while (queue.peek() == null) {
+            try {
+                System.out.println(Thread.currentThread().getName() + ": wait() begins, queue = " + queue);
+                wait();
+                System.out.println(Thread.currentThread().getName() + ": wait() ends,   queue = " + queue);
+            } catch (InterruptedException e) {
+            }
+        }
+        return queue.remove();
+    }
+    public synchronized void putRequest(Request request) {
+        queue.offer(request);
+        System.out.println(Thread.currentThread().getName() + ": notifyAll() begins, queue = " + queue);
+        notifyAll();
+        System.out.println(Thread.currentThread().getName() + ": notifyAll() ends, queue = " + queue);
+    }
+}
+
+```
+
+```java
+public class Request {
+    private final String name;
+    public Request(String name) {
+        this.name = name;
+    }
+    public String getName() {
+        return name;
+    }
+    public String toString() {
+        return "[ Request " + name + " ]";
+    }
+}
+
+------------------------
+import java.util.Queue;
+import java.util.LinkedList;
+
+public class RequestQueue {
+    private final Queue<Request> queue = new LinkedList<Request>();
+    public synchronized Request getRequest() {
+        while (queue.peek() == null) {
+            try {
+                System.out.println(Thread.currentThread().getName() + ": wait() begins, queue = " + queue);
+                wait();
+                System.out.println(Thread.currentThread().getName() + ": wait() ends,   queue = " + queue);
+            } catch (InterruptedException e) {
+            }
+        }
+        return queue.remove();
+    }
+    public synchronized void putRequest(Request request) {
+        queue.offer(request);
+        System.out.println(Thread.currentThread().getName() + ": notifyAll() begins, queue = " + queue);
+        notifyAll();
+        System.out.println(Thread.currentThread().getName() + ": notifyAll() ends, queue = " + queue);
+    }
+}
+-----------------------
+import java.util.Random;
+
+public class ClientThread extends Thread {
+    private final Random random;
+    private final RequestQueue requestQueue;
+    public ClientThread(RequestQueue requestQueue, String name, long seed) {
+        super(name);
+        this.requestQueue = requestQueue;
+        this.random = new Random(seed);
+    }
+    public void run() {
+        for (int i = 0; i < 10000; i++) {
+            Request request = new Request("No." + i);
+            System.out.println(Thread.currentThread().getName() + " requests " + request);
+            requestQueue.putRequest(request);
+            try {
+                Thread.sleep(random.nextInt(1000));
+            } catch (InterruptedException e) {
+            }
+        }
+    }
+}
+---------------
+import java.util.Random;
+
+public class ServerThread extends Thread {
+    private final Random random;
+    private final RequestQueue requestQueue;
+    public ServerThread(RequestQueue requestQueue, String name, long seed) {
+        super(name);
+        this.requestQueue = requestQueue;
+        this.random = new Random(seed);
+    }
+    public void run() {
+        for (int i = 0; i < 10000; i++) {
+            Request request = requestQueue.getRequest();
+            System.out.println(Thread.currentThread().getName() + " handles  " + request);
+            try {
+                Thread.sleep(random.nextInt(1000));
+            } catch (InterruptedException e) {
+            }
+        }
+    }
+}
+------------------------
+public class Main {
+    public static void main(String[] args) {
+        RequestQueue requestQueue = new RequestQueue();
+        new ClientThread(requestQueue, "Alice", 3141592L).start();
+        new ServerThread(requestQueue, "Bobby", 6535897L).start();
+    }
+}
+
+
+
+```
+
+![](picture/java多线程设计模式/A3-1运行结果示倒png.png)
+
+
+
+
+
+### 习题 3-4 （ 似是而非的 Guarded Suspension 模式 ）
+
+如果将 RequestQueue 类 （ 代码清单 3-2 ） 中的 getRequest 方法改写为下列 （ I ）	（ 4 ） 这 样，会发生什么问题呢？
+( I ） 将 while 改为 if （ 代码清单 3-8 )
+( 2 ） 将 synch r on ized 的范围改为只包含 wait （ 代码清单 3-9 )
+( 3 ） 将 t ry . . . catch 移到 whi le 外面 （ 代码清单 3-10 )
+( 4 ） 将 wa it 替换为 Thread .sleep （ 代码清单 子l I  )
+
+
+
+```java
+代码清单 3-8	将 while 改为 if
+public synchronized Request getRequest(){
+    if(queue.peek() == null){
+        try{
+            wait();
+        }catch(InterruptedException e){}
+    }
+    return queue.remove();
+}
+```
+
+
+
+
+
+```java
+代码清单 3-9	将 synchronized  的范围改为只包含 wait
+public  Request getRequest(){
+    if(queue.peek() == null){
+        try{
+            synchronized(this){
+                wait();
+            }            
+        }catch(InterruptedException e){}
+    }
+    return queue.remove();
+}
+
+```
+
+
+
+
+
+```java
+代码清单 3-10	将 try···catch 移到 while 外面
+public synchronized Request getRequest(){
+   try{
+       while(queue.peek() == null){
+           wait();
+       }
+    }catch(InterruptedException e){}
+    return queue.remove();
+}
+
+```
+
+
+
+
+
+```java
+代码清单 3-11	将 wait 替换为 Thread.sleep 
+public synchronized Request getRequest(){
+    while(queue.peek() == null){
+        try{
+            Thread.sleep(100);
+        }catch(InterruptedException e){}
+    }
+    return queue.remove();
+}
+```
+
+
+
+-------------------
+
+**改写后的(1)-(4)  都存在问题**，具体如下所示。
+(1) 将 while 改为 if （ 代码清单 3-8 }
+这样修改在本书的示例程序中是不会发生问题，但一般情况下还是会发生问题的。 这里假设多个线程都在 wait 时，RequestQueue 的实例被执行了 notifyAll 。这样一来，
+多个线程都会开始运行 。这时 ，如果 qu eu e 中只有一个元素 ，第一个开始运行的线程调用 queue .remove( ) 后，queue 会变为空 ；若queue 为空，queue .pee k ( ) 的值则为 null 。但 如果第二个及之后开始运行的线程之前已经确认守护条件成立 ，那么即使这时 queue .peek ( ) == nu ll ,  queue .remove （ ） 也还是会被调用。因此，使用这个类时，程序可能会欠缺安全性。
+正在 w a i t 的线程在开始运行前，必须要再次检查守护条件 ，所以不应该使用 if ，而是要使用 while 。
+
+如果用 not if y 来替换 not i f yAll ，这时是不是就可以使用 if ，而不必使用 wh ile 了呢？ 
+
+这在示例程序中没有问题。但是，如果用在非常大的程序中就会发生问题。这是因为，RequestQueue实例有可能会被某个线程 not if y / notif yAll   用 not i f y 来替换 not if yAll 、用 i f 来替换while·   ··这样来实现的 Guarded Suspension 模式的类可复用性会很低。
+
+这里再强调一下：**在 Guarded  Suspension 模式中，使用 while 来检查守护条件是非常重要的。**
+notif y / notif yAll 只不过是检查守护条件的触发器而已 。例如，请试着想象一下如下场景 ：假如你正在开车 ，遇到红灯后就停下来，坐在那里发呆。这时即使副驾驶的人突然提醒你可以走了 ，你也不能慌慌张张地踩油 门就走，而是应该在自己确认信 号灯已经变绿 ，行车安全的情况下 ，才可以踩油门。**Guarded Suspension 模式与此相同 ，not if y / notif yAll 只不过是提醒了一声。在继续执行处理之前，必须要再次切实检查守护条件。**
+
+
+
+( 2 ） 将 synchronized 的范围改为只包含 wait （ 代码清单 3-9 ) 这样修改在本书的示例程序中是不会发生问题，但一般情况下还是会发生问题的。 因为这时以下处理会跑到  synchroni  zed    代码块的外面。
+
+- 检查条件
+- 调用 remove
+
+当 qu e u e 中的元素 只有一个时，如果有两个钱程像图A3-2 这样运行 ，线程 l会抛出NoSuchElementExcept ion 异常。同时，queue 字段的 LinkedList 类本就是非线程安全的。 使用这个类时 ，程序会欠缺安全性 。
+
+| 线程 1      | 线程 2      |
+| ----------- | ----------- |
+| 检查条件    |             |
+|             | 检查条件    |
+|             | 调用 remove |
+| 调用 remove |             |
+
+
+
+
+
+( 3 ） 将 try...catch 移到 while 外面 （ 代码清单 3-10 ) 这样修改在本书的示例程序中是不会发生问题，但一般情况下还是会发生问题的。 这里假设当线程正在 wa it 时，其他线程调用了 interrupt 方法。这时，即使守护条件不成立 ，该线程也会跳出 while 吾句，进入ca t ch 语句块，调用 remove 方法。也就是说，“等到守 护条件满足” 这一功能并未实现。
+使用这个类时，程序可能会欠缺安全性。习题 3-6  中会创建一个正确处理 InterruptedException异常的程序。
+
+
+
+( 4 ） 将 wait 替换为 Thread.sleep （ 代码清单 3-11 )
+这样修改即使在本书的示例程序中也是会发生问题的。
+**“每隔约 100 毫秒才检查一次守护条件 ，所以性能会下降” 这个回答是不正确的**。这里并不是 性能的问题，而是生存性的问题。wait 与 Thread.sleep 不同 ，**==执行 wait 的线程会释放对象实 例的锁，而Thread .sleep 不会释放实例的锁==**。因此，**如果在 getRequest 这个 synchronized 方法中执行 Thread. sleep，那么其他线程无论哪一个都无法进入putRequest方法或getRequest 方法 （ 即陷入阻塞 ）**。由于无法进入 putRequest ，所以queue .peek （ ） 的值一 直都是 n u l l ，守护条件永远都不会成立 。正在 sleep 的线程会每隔约 100 毫秒醒来一次以检查 守护条件。但守护条件一直为假 ，所以线程会再次休眠。线程就这样一直重复 “醒来→检查→再 休眠” 的过程。而在这期间 ，**其他想要执行 pu tRequest 或 get Request 的线程会一直处于阻 塞状态。**
+因此，使用这个类时 ，程序会欠缺生存性。在这个示例中，线程每隔约 100 毫秒检查一次守护 条件，操作并不是停止的。但也只是这样不断地定期检查守护条件而己 ，处理永远都没有进展。像 这样，虽然程序一直在运行 ，但并没有实质进展的状况 ，我们通常称为活锁（ Iivelock ）。活锁与死 锁一样，都失去了生存性。
+该示例就是习题 12-l 中 “synchroni zed 方法中进入了无限循环” 时的一种情况
+
+
+
+### 习题 3-5 （ 两个 Guarded Suspension )
+
+某人想、以示例程序为基础 ，创建 “以对话方式互相发送请求的两个线程”。
+TalkThread 类 （ 代码清单 3-12 ） 中有两个 RequestQu eue （ 代码清单 3-2 ） 的实例。一个用 于输入 （ input ），另一个用于输出 （ ou tpu t ）。TalkTh read 类首先使用 getRequest 方法从用 于输入的 RequestQueue 中获取一个请求 （ request l ）。
+然后．在 request l 的名称后面加上一个感叹号 （ ！），创建一个新的请求 （ request2 ）。随后 ， 使用用于输出的 RequestQueue 的putRequest 方法 ，将该新的请求发送给交谈对象的线程。
+这个人认为 ，如果创建两个这样的T a l k T h r e a d 实例，并共享用于输入／用于输出的两个 RequestQueu e 实例 （ 互相交换使用），那么请求将会在两个线程之 间互相发送 ，感叹号会不断增 多。于是，他写出了如代码清单 3- 13 所示的 Ma in 类。
+但实际运行起来后 ，结果却如图 3-6 所示。A l i ce 't:I B obb y 两个线程的确启动了，但之后什 么都没显示 。这是为什么呢？另外，为了实现预期的请求交换 ，这个程序该怎么改呢
+
+```java
+public class Main {
+    public static void main(String[] args) {
+        RequestQueue requestQueue1 = new RequestQueue();
+        RequestQueue requestQueue2 = new RequestQueue();
+        new TalkThread(requestQueue1, requestQueue2, "Alice").start();
+        new TalkThread(requestQueue2, requestQueue1, "Bobby").start();
+    }
+}
+
+public class Request {
+    private final String name;
+    public Request(String name) {
+        this.name = name;
+    }
+    public String getName() {
+        return name;
+    }
+    public String toString() {
+        return "[ Request " + name + " ]";
+    }
+}
+import java.util.Queue;
+import java.util.LinkedList;
+
+public class RequestQueue {
+    private final Queue<Request> queue = new LinkedList<Request>();
+    public synchronized Request getRequest() {
+        while (queue.peek() == null) {
+            try {
+                wait();
+            } catch (InterruptedException e) {
+            }
+        }
+        return queue.remove();
+    }
+    public synchronized void putRequest(Request request) {
+        queue.offer(request);
+        notifyAll();
+    }
+}
+public class TalkThread extends Thread {
+    private final RequestQueue input;
+    private final RequestQueue output;
+    public TalkThread(RequestQueue input, RequestQueue output, String name) {
+        super(name);
+        this.input = input;
+        this.output = output;
+    }
+    public void run() {
+        System.out.println(Thread.currentThread().getName() + ":BEGIN");
+        for (int i = 0; i < 20; i++) {
+            // 接收对方的请求
+            Request request1 = input.getRequest();
+            System.out.println(Thread.currentThread().getName() + " gets  " + request1);
+
+            // 加上一个(!)再返给对方
+            Request request2 = new Request(request1.getName() + "!");
+            System.out.println(Thread.currentThread().getName() + " puts  " + request2);
+            output.putRequest(request2);
+        }
+        System.out.println(Thread.currentThread().getName() + ":END");
+    }
+}
+
+
+
+```
+
+
+
+--------------
+
+程序不运行的原因是 Alice 和 Bobby 这两个线程发生了死锁。
+仔细查看 TalkThread 类的 run 方法，你会发现 run 方法是从 getRequest 方法开始执行的。
+
+•	Alice 在 getRequest 中等待 Bobby 发送请求，进行wait
+•	Bobby 在 getRequest 中等待 Alice 发送请求，进行wait
+
+就这样 ，Alice 和 Bobby 面面相觑 ，动弹不了（死锁）。这就像互相模仿对方的两只鹦鹉 ，互 不作声，你瞪着我 、我瞪着你一样。
+代码清单 A3-2 展示了该问题的一种解决方法。在代码清单 A3-2 中，程序首先向 requestQueuel 中p u t R e qu e st 一个名为 ” He l l ” 的请求，这就是所谓的“种子”。A l ice 通过最开始的 getRequest 获取的就是这个请求。
+另外，当 Alice 和 Bobby 陷入死锁时，两人都未持有 requestQueuel 或 requestQueue2的锁。这是因为两人都正在 wait ，而锁正在被释放。大家可以和习题 1-6 中介绍的死锁比较一下。
+
+```java
+代码清单 A3-2	最开始股入 “种子” 的解决方案 （ Main.java ) 
+public class Main {
+    public static void main(String[] args) {
+        RequestQueue requestQueue1 = new RequestQueue();
+        RequestQueue requestQueue2 = new RequestQueue();
+        requestQueue1.putRequest(new Request("Hello"));
+        new TalkThread(requestQueue1, requestQueue2, "Alice").start();
+        new TalkThread(requestQueue2, requestQueue1, "Bobby").start();
+    }
+}
+
+```
+
+![](picture/java多线程设计模式/A3-3 运行结果.png)
+
+### 习题 3-6 （ 线程的取消 ） （ 难 ）
+
+这个问题涉及 interrupt 方法。大 家可以在读完第 5 章的讲解后再来解答这个 问题。 
+
+
+
+如果不用 CTRL+C 来强制终止 ，那么本章的示例程序要过很长时间才能终止运行。因此，我们将 M a i n 类改写为了如代码清单 3-14 所示的代码 。在这个 M a i n 类中，大约经过 10 秒之后 ，程 序便会调用 C lientTh r ead （ 代码清单 3-3 ） 和 ServerTh read （ 代码清单 3-4 ） 的 int er rupt 方法。但这样修改之后的程序还是元法终止 （ 图 3-7)。请保持这个 Ma i n 类不变 ，试着修改其他的 类，让程序在约 10 秒之后终止。
+
+```java
+public class Main {
+    public static void main(String[] args) {
+        // 启动线程
+        RequestQueue requestQueue = new RequestQueue();
+        Thread alice = new ClientThread(requestQueue, "Alice", 314159L);
+        Thread bobby = new ServerThread(requestQueue, "Bobby", 265358L);
+        alice.start();
+        bobby.start();
+
+        // 等待约10秒
+        try {
+            Thread.sleep(10000);
+        } catch (InterruptedException e) {
+        }
+
+        // 调用interrupt方法
+        System.out.println("***** calling interrupt *****");
+        alice.interrupt();
+        bobby.interrupt();
+    }
+}
+
+public class Request {
+    private final String name;
+    public Request(String name) {
+        this.name = name;
+    }
+    public String getName() {
+        return name;
+    }
+    public String toString() {
+        return "[ Request " + name + " ]";
+    }
+}
+import java.util.Queue;
+import java.util.LinkedList;
+
+public class RequestQueue {
+    private final Queue<Request> queue = new LinkedList<Request>();
+    public synchronized Request getRequest() {
+        while (queue.peek() == null) {
+            try {
+                wait();
+            } catch (InterruptedException e) {
+            }
+        }
+        return queue.remove();
+    }
+    public synchronized void putRequest(Request request) {
+        queue.offer(request);
+        notifyAll();
+    }
+}
+import java.util.Random;
+
+public class ServerThread extends Thread {
+    private final Random random;
+    private final RequestQueue requestQueue;
+    public ServerThread(RequestQueue requestQueue, String name, long seed) {
+        super(name);
+        this.requestQueue = requestQueue;
+        this.random = new Random(seed);
+    }
+    public void run() {
+        for (int i = 0; i < 10000; i++) {
+            Request request = requestQueue.getRequest();
+            System.out.println(Thread.currentThread().getName() + " handles  " + request);
+            try {
+                Thread.sleep(random.nextInt(1000));
+            } catch (InterruptedException e) {
+            }
+        }
+    }
+}
+import java.util.Random;
+
+public class ClientThread extends Thread {
+    private final Random random;
+    private final RequestQueue requestQueue;
+    public ClientThread(RequestQueue requestQueue, String name, long seed) {
+        super(name);
+        this.requestQueue = requestQueue;
+        this.random = new Random(seed);
+    }
+    public void run() {
+        for (int i = 0; i < 10000; i++) {
+            Request request = new Request("No." + i);
+            System.out.println(Thread.currentThread().getName() + " requests " + request);
+            requestQueue.putRequest(request);
+            try {
+                Thread.sleep(random.nextInt(1000));
+            } catch (InterruptedException e) {
+            }
+        }
+    }
+}
+
+
+```
+
+
+
+
+
+---
+
+即使调用 in t e r r up t 方法 ，线程也不会终止。这是因为调用 sleep 方法和 wa it 方法的类 忽略了 Inte r ruptedExcept ion 异常。
+我们来修改一下 RequestQueue 类 ，让 get Reques t 方法抛出 Inte r ruptedE xception异常。
+另外，我们再修改一下 C l i en t T h r e ad 类和 Serve r T h r e ad 类，让它们在程序抛出
+Inter ruptedException 异常时跳出 f or 循环。这样程序便可以正常终止了
+
+```java
+代码清单 A3-3不忽略 lnte『『uptedException  的 RequestQueue 类 
+
+import java.util.Queue;
+import java.util.LinkedList;
+
+public class RequestQueue {
+    private final Queue<Request> queue = new LinkedList<Request>();
+    public synchronized Request getRequest() throws InterruptedException {
+        while (queue.peek() == null) {
+            wait();
+        }
+        return queue.remove();
+    }
+    public synchronized void putRequest(Request request) {
+        queue.offer(request);
+        notifyAll();
+    }
+}
+
+```
+
+```java
+代码清单 A3-4不忽略 Interrupted Exception   的ClientThread  类 （ ClientThread.java   )
+
+import java.util.Random;
+
+public class ClientThread extends Thread {
+    private final Random random;
+    private final RequestQueue requestQueue;
+    public ClientThread(RequestQueue requestQueue, String name, long seed) {
+        super(name);
+        this.requestQueue = requestQueue;
+        this.random = new Random(seed);
+    }
+    public void run() {
+        try {
+            for (int i = 0; i < 10000; i++) {
+                Request request = new Request("No." + i);
+                System.out.println(Thread.currentThread().getName() + " requests " + request);
+                requestQueue.putRequest(request);
+                Thread.sleep(random.nextInt(1000));
+            }
+        } catch (InterruptedException e) {
+        }
+    }
+}
+
+```
+
+```java
+代码清单 A3-5	不忽略 InterruptedException 的 ServerThread 类 （ ServerThread.java 
+import java.util.Random;
+
+public class ServerThread extends Thread {
+    private final Random random;
+    private final RequestQueue requestQueue;
+    public ServerThread(RequestQueue requestQueue, String name, long seed) {
+        super(name);
+        this.requestQueue = requestQueue;
+        this.random = new Random(seed);
+    }
+    public void run() {
+        try {
+            for (int i = 0; i < 10000; i++) {
+                Request request = requestQueue.getRequest();
+                System.out.println(Thread.currentThread().getName() + " handles  " + request);
+                Thread.sleep(random.nextInt(1000));
+            }
+        } catch (InterruptedException e) {
+        }
+    }
+}
+
+```
+
+
+
+>小知识 ：如果忘记修改 RequestQueue  类会怎么样呢
+>我们来思考一下如果忘记修改 RequestQueue  类会怎么样。
+>假设我们没有修改 R equ e st Qu eu e 类，当调用i n t er r u p t 方法时 ，如果线程正在 sleep，那么程序可以正常终止 。但如果线程正在 wa it ，程序便不会终止。这是因为 ，抛出的 In te r r upt edExcept ion 异常被忽略了。也就是说，这个程序每运行数次就会有一次 （ 或者 每数十次 、数百次就会有一次 ） 无法按预期终止。
+>关于如何让线程切实 、优雅地终止 ，我们将在第10 章 “Two-Phase Termination 模式” 中进 行介绍。
+>
+>
+
+
+
+
+
+
+
+# 第 4 章 Balking 模式不需要就算了
+
+## 4.1 Balking 模式
+
+我正坐在餐馆中 ，合计着吃点什么。
+想好之后，我举起手示意服务员点菜。于是，看到我举手的服务员就向我走来点菜。
+这时，另一位服务员也看到我举手示意了，但他看到已经有一位服务员 走向了我 ，所以就没有 再过来 ··．．．
+本章，我们将学习 Balking 模式。
+**如果现在不适合执行这个操作 ，或者没必要执行这个操作 ，就停止处理 ，直接返回 一一这就是Balking 模式。**
+所谓 Balk ，就是“停止井返回” 的意思。棒球中的 “投手犯规” 也是 Balk 这个词。“当垒上有 跑垒员时，投手已踏投手根但中途停止投球”  的犯规行为就称为 Balk。
+Balking 模式与 Guarded Suspension 模式 （ 第 3 章） 一样，也存在守护条件。**==在 Balking 模式中， 如果守护条件不成立 ，则立即中断处理。这与 Guarded  Suspension 模式有所不同，因为Guarded Suspension  模式是一直等待至可以运行。==**
+
+
+
+## 4.2	示例程序
+
+我们来看一个使用了Balking 模式的简单示例程序。这个程序会定期将当前数据内容写入文件中。 当数据内容被写入时，会完全覆盖上次写入的内容，只有最新的内容才会被保存。
+另外，当写入的内容与上次写入的内容完全相同   时，再向文件写人就显得多余了，所以就不再 执行写入操作 。也就是说，该程序以  “数据内容存在不同”  作为守护条件 ，如果数据内容相同，则 不执行写人操作 ，直接返回 （ balk ）。
+在此我们来思考一下文本工具的 “自动保存功能”。所谓自动保存功能 ，就是为了防止电脑突 然死机 ，而定期地将数据保存到文件中 的功能。本章介绍的示例程序可以说是自动保存功能的超级 精简版。
+类的一览表如表 4-1 所示。
+D a t a 类对应的是文本下具的文本内容，Sa ve r Th r ea d 类对应的则是执行自动保存的钱程。 而 ChangerTh read 类则是模仿 “进行文本修改并随时保存的用户”。
