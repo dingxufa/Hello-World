@@ -94,6 +94,25 @@ this.applicationContext.getBeansWithAnnotation(MessageListener.class);
 
 
 
+properties	
+
+```properties
+spring.datasource.username=root
+spring.datasource.password=xxxxx
+spring.datasource.url=jdbc:mysql://localhost:3306/springCache
+spring.datasource.driver-class-name=com.mysql.jdbc.Driver
+
+#开启驼峰命名法
+mybatis.configuration.map-underscore-to-camel-case=true
+
+#打印sql语句日志
+logging.level.com.lxj.cache.mappers=debug
+
+#控制台打印配置信息
+debug=true
+
+```
+
 
 
 
@@ -1892,69 +1911,176 @@ socket.getLocalAddress().getHostAddress();
 
 
 
-# 😈 kafka
+# 😈 MQ
+
+
+
+##  Kafka、RabbitMQ、RocketMQ
+
+### 1 Kafka、RabbitMQ、RocketMQ比较
+
+#### 1. 流派1：有Broker的暴力路由
+
+这个流派最典型的就是Kafka了，Kafka实际上为了**提升性能**，简化了MQ功能模型，仅仅提供了一些最基础的MQ相关的功能，但是大幅度优化和提升了**吞吐量**。首先，这个流派**一定是有一个Broker角色**的，也就是说，**Kafka需要部署一套服务器集群，每台机器上都有一个Kafka Broker进程，这个进程就负责接收请求，存储数据，发送数据**。Kafka的生产消费模型做的相对是比较暴力简单的，就是简单的数据流模型。
+
+简单来说，他有一个概念，叫做“Topic”，你可以往这个“Topic”里写数据，然后让别人从这里来消费。这个**Topic可以划分为多个Partition，每个Partition放一台机器上，存储一部分数据**。在写消息到Topic的时候，会自动把你这个消息给分发到某一个Partition上去。然后消费消息的时候，有一个Consumer Group的概念，你部署在多台机器上的Consumer可以组成一个Group，**一个Partition只能给一个Consumer消费，一个Cosumer可以消费多个Partition**，这是最最核心的一点。通过这个模型，**保证一个Topic里的每条消息，只会交给Consumer Group里的一个Consumer来消费，形成了一个Queue（队列）的效果**。
+
+假如你想要有一个Queue的效果，也就是希望不停的往Queue里写数据，然后多个消费者消费，每条消息就只能给一个消费者，那么通过Kafka来实现，其实就是生产者写多个Partition，每个Partition只能给Consumer Group中的一个Consumer来消费。如下图所示：
+
+
+
+![img](picture/myP/16a8ca53a6eaad0e.jpg)
+
+
+
+**如果要实现Publish/Subscribe的模型呢？就是说生产者发送的每条消息，都要让所有消费都消费到，怎么实现？**
+
+那就让**每个消费者都是一个独立的消费组，这样每条消息都会发送给所有的消费组**，每个消费组里那唯一的一个消费者一定会消费到所有的消息。
+
+![img](picture/myP/16a8ca538b2c77fa.jpg)
+
+但是除此之外，Kafka就没有任何其他的消费功能了，就是如此简单，所以属于一种比较暴力直接的流派。**它就是简单的消费模型，实现最基础的Queue和Pub/Sub两种消费模型，但是内核中大幅度优化和提升了性能以及吞吐量**。所以Kafka天生适合的场景，就是大数据领域的实时数据计算的场景。因为**在大数据的场景下，通常是弱业务的场景**，没有太多复杂的业务系统交互，而主要是大量的数据流入Kafka，然后进行实时计算。所以就是需要简单的消费模型，但是必须在内核中对吞吐量和性能进行大幅度的优化。因此Kafka技术通常是在大数据的实时数据计算领域中使用的，比如说**每秒处理几十万条消息，甚至每秒处理上百万条消息。**
+
+
+
+#### 2.流派2：有Broker的复杂路由
+
+第二个流派，就是RabbitMQ为代表的流派，**他强调的不是说如何提升性能和吞吐量，关注的是说要提供非常强大、复杂而且完善的消息路由功能**。所以对于RabbitMQ而言，他就不是那么简单的Topic-Partition的消费模型了。在RabbitMQ中引入了一个非常核心的概念，叫做Exchange，这个**Exchange就是负责根据复杂的业务规则把消息路由到内部的不同的Queue里去**。举个例子，如果要实现最简单的队列功能，就是让exchange往一个queue里写数据，然后多个消费者来消费这个queue里的数据，每条消息只能给一个消费者，那么可以是类似下面的方式。
+
+![img](picture/myP/16a8ca53a6c4d47c.jpg)
+
+**如果想要实现Pub/Sub的模型，就是一条消息要被所有的消费者给消费到，那么就可以让每个消费者都有一个自己的Queue，然后绑定到一个Exchange上去。接着，这个Exchange就设定把消息路由给所有的Queue即可**，如下面这样。此时Exchange可以把每条消息都路由给所有的Queue，每个Consumer都可以从自己的Queue里拿到所有的消息。
+
+![img](picture/myP/16a8ca53a6b7de77.jpg)
+
+RabbitMQ这种流派，**其实最核心的是，基于Exchange这个概念**，他可以做很多复杂的事情。比如：**如果你想要某个Consumer只能消费到某一类数据，那么Exchange可以把消息里比如带“XXX”前缀的消息路由给某个Queue**。或者你可以限定某个Consumer就只能消费某一部分数据。总之在这里你可以做很多的限制，设置复杂的路由规则。但是也正是因为引入了这种复杂的消费模型，**支持复杂的路由功能**，导致RabbitMQ在内核以及架构设计上没法像Kafka做的那么的轻量级、高性能、可扩展、高吞吐，所以**RabbitMQ在吞吐量上要比Kafka低一个数量级**。所以这种流派的MQ，**往往适合用在Java业务系统中，不同的业务系统需要进行复杂的消息路由**。
+
+比如说业务系统A发送了10条消息，其中3条消息是给业务系统B的，7条消息是给业务系统C的，要实现这种复杂的路由模型，就必须依靠RabbitMQ来实现。当然，对于这种业务系统之间的消息流转而言，可能不需要那么高的吞吐量，可能每秒业务系统之间也就转发几十条或者几百条消息，那么就完全适合采用RabbitMQ来实现。
+
+#### 3.流派3：无Broker的通信流派
+
+ZeroMQ代表的是第三种MQ。说白了，他是**不需要在服务器上部署的，就是一个客户端的库**而已。也就是说，他**主要是封装了底层的Socket网络通讯，然后一个系统要发送一条消息给另外一个消息消费** 。通过ZeroMQ，本质就是底层ZeroMQ发送一条消息到另外一个系统上去。所以ZeroMQ是**去中心化的，不需要跟Kafka、RabbitMQ一样在服务器上部署的**。
+
+他主要是**用来进行业务系统之间的网络通信的**，有点类似于比如你是一个分布式系统架构，那么此时分布式架构中的**各个子系统互相之间要通信**，你是基于Dubbo RPC？还是Spring Cloud HTTP？可能上述两种你都不想要，就是要基于原始的Socket进行网络通信，简单的收发消息而已。此时就可以使用ZeroMQ作为分布式系统之间的消息通信，如下面那样。
+
+![img](picture/myP/16a8ca53a6d187c4.jpg)
+
+#### 总结
+
+其实现在基本上MQ主要就是这三个流派，很多小众的MQ一般很少有人会用。
+
+而且用MQ的场景主要就是两大类：
+
+1. 业务系统之间异步通信
+2. 大数据领域的实时数据计算
+
+所以一般业务系统之间通信就是会采用RabbitMQ/RocketMQ，需要复杂的消息路由功能的支撑。大数据的实时计算场景会采用Kafka，需要简单的消费模型，但是超高的吞吐量。至于ZeroMQ，一般来说，少数分布式系统中子系统之间的分布式通信时会采用，作为轻量级的异步化的通信组件。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## kafka
 
 ### kafka的高可用架构原理
 
-（1）如何保证宕机的时候数据不丢失？
+#### 1.如何保证宕机的时候数据不丢失？
 
 比如下面的图里就是表明了对于**每一个Topic，我们都可以设置它包含几个Partition，每个Partition负责存储这个Topic一部分的数据**。然后Kafka的Broker集群中，每台机器上都存储了一些Partition，也就存放了Topic的一部分数据，这样就实现了Topic的数据分布式存储在一个Broker集群上。
 
-![img](../Documents/book/pic/summary/16a4acc392f74f75)
+![img](picture/myP/16a4acc392f74f75.jpg)
 
 
 
 但是有一个问题，万一 一个Kafka Broker宕机了，此时上面存储的数据不就丢失了吗？没错，这就是一个比较大的问题了，分布式系统的数据丢失问题，是他首先必须要解决的，一旦说任何一台机器宕机，此时就会导致数据的丢失。
 
-（2）多副本冗余的高可用机制
+#### 2.多副本冗余的高可用机制
 
 所以如果大家去分析任何一个分布式系统的原理，比如说zookeeper、kafka、redis cluster、elasticsearch、hdfs，等等，其实他都有自己内部的一套**多副本冗余的机制**，多副本冗余几乎是现在任何一个优秀的分布式系统都一般要具备的功能。在kafka集群中，每个Partition都有多个副本，其中一个副本叫做leader，其他的副本叫做follower，如下图。
 
-![img](../Documents/book/pic/summary/16a4acc4c8841d25)
+![img](picture/myP/16a4acc4c8841d25.jpg)
 
 如上图所示，假设一个Topic拆分为了3个Partition，分别是Partition0，Partiton1，Partition2，此时每个Partition都有2个副本。比如Partition0有一个副本是Leader，另外一个副本是Follower，Leader和Follower两个副本是分布在不同机器上的。这样的**多副本冗余机制，可以保证任何一台机器挂掉，都不会导致数据彻底丢失**，因为起码还是有副本在别的机器上的。
 
 
 
-（3）多副本之间数据如何同步？
+#### 3.多副本之间数据如何同步？
 
 着我们就来看看多个副本之间数据是如何同步的？其实任何一个Partition，**只有Leader是对外提供读写服务**的也就是说，如果有一个客户端往一个Partition写入数据，此时一般就是写入这个Partition的Leader副本。然后Leader副本接收到数据之后，**Follower副本会不停的给他发送请求尝试去拉取最新的数据，拉取到自己本地后，写入磁盘中**。如下图所示：
 
-![img](../Documents/book/pic/summary/16a4acc60c2439a7)
+![img](picture/myP/16a4acc60c2439a7.jpg)
 
 
 
-（4）ISR到底指的是什么东西？
+#### 4.ISR到底指的是什么东西？
 
 既然大家已经知道了Partiton的多副本同步数据的机制了，那么就可以来看看ISR是什么了。ISR全称是“In-Sync Replicas”，也就是**保持同步的副本**，他的含义就是，**跟Leader始终保持同步的Follower有哪些**。大家可以想一下 ，如果说某个Follower所在的Broker因为JVM FullGC之类的问题，导致自己卡顿了，无法及时从Leader拉取同步数据，那么是不是会导致Follower的数据比Leader要落后很多？所以这个时候，就意味着Follower已经跟Leader不再处于同步的关系了。但是只要Follower一直及时从Leader同步数据，就可以保证他们是处于同步的关系的。所以**每个Partition都有一个ISR，这个ISR里一定会有Leader自己，因为Leader肯定数据是最新的，然后就是那些跟Leader保持同步的Follower，也会在ISR里。**
 
 
 
-（5）acks参数的含义
+#### 5.acks参数的含义
 
 铺垫了那么多的东西，最后终于可以进入主题来聊一下acks参数的含义了。如果大家没看明白前面的那些副本机制、同步机制、ISR机制，那么就无法充分的理解acks参数的含义，这个参数实际上决定了很多重要的东西。**首先这个acks参数，是在KafkaProducer，也就是生产者客户端里设置的**。也就是说，你往kafka写数据的时候，就可以来设置这个acks参数。然后这个参数实际上有三种常见的值可以设置，分别是：0、1 和 all。第一种选择是把acks参数设置为0，意思就是我的KafkaProducer在客户端，只要把消息发送出去，不管那条数据有没有在哪怕Partition Leader上落到磁盘，我就不管他了，直接就认为这个消息发送成功了。如果你采用这种设置的话，那么你必须注意的一点是，可能你发送出去的消息还在半路。结果呢，Partition Leader所在Broker就直接挂了，然后结果你的客户端还认为消息发送成功了，此时就会**导致这条消息就丢失了。**
 
-![img](../Documents/book/pic/summary/16a4acc77f81499b)
+![img](picture/myP/16a4acc77f81499b.jpg)
 
 
 
 
 
-第二种选择是设置 acks = 1，意思就是说只要**Partition Leader接收到消息而且写入本地磁盘了，就认为成功了，不管他其他的Follower有没有同步过去这条消息了**。这种设置其实是kafka**默认的设置**，大家请注意，划重点！这是默认的设置也就是说，默认情况下，你要是不管acks这个参数，只要Partition Leader写成功就算成功。但是这里有一个问题，**万一Partition Leader刚刚接收到消息，Follower还没来得及同步过去，结果Leader所在的broker宕机了，此时也会导致这条消息丢失，因为人家客户端已经认为发送成功了。**
+第二种选择是设置 acks = 1，意思就是说只要**Partition Leader接收到消息而且写入本地磁盘了，就认为成功了，不管他其他的Follower有没有同步过去这条消息了**。这种设置其实是kafka**默认的设置**，大家请注意，划重点！==这是默认的设置==也就是说，默认情况下，你要是不管acks这个参数，只要Partition Leader写成功就算成功。但是这里有一个问题，**万一Partition Leader刚刚接收到消息，Follower还没来得及同步过去，结果Leader所在的broker宕机了，此时也会导致这条消息丢失，因为人家客户端已经认为发送成功了。**
 
-![img](../Documents/book/pic/summary/16a4acc8dbd29971)
+![img](picture/myP/16a4acc8dbd29971.jpg)
 
 
 
 最后一种情况，就是设置acks=all，这个意思就是说，**Partition Leader接收到消息之后，还必须要求ISR列表里跟Leader保持同步的那些Follower都要把消息同步过去，才能认为这条消息是写入成功了。**如果说Partition Leader刚接收到了消息，但是结果Follower没有收到消息，此时Leader宕机了，那么客户端会感知到这个消息没发送成功，他会重试再次发送消息过去。此时可能Partition 2的Follower变成Leader了，此时ISR列表里只有最新的这个Follower转变成的Leader了，那么只要这个新的Leader接收消息就算成功了。
 
-![img](../Documents/book/pic/summary/16a4acca5969bc88)
+![img](picture/myP/16a4acca5969bc88.jpg)
 
 
 
-（6）最后的思考acks=all 就可以代表数据一定不会丢失了吗？
+#### 6.最后的思考acks=all 就可以代表数据一定不会丢失了吗？
 
-当然不是，如果你的Partition**只有一个副本，也就是一个Leader，任何Follower都没有**，你认为acks=all有用吗？当然没用了，因为ISR里就一个Leader，他接收完消息后宕机，也会导致数据丢失。所以说，**这个acks=all，必须跟ISR列表里至少有2个以上的副本配合使用，起码是有一个Leader和一个Follower才可以**。这样才能保证说写一条数据过去，一定是2个以上的副本都收到了才算是成功，此时任何一个副本宕机，不会导致数据丢失。所以希望大家把这篇文章好好理解一下，对大家出去面试，或者工作中用kafka都是很好的一个帮助。
+==当然不是==，如果你的Partition**只有一个副本，也就是一个Leader，任何Follower都没有**，你认为acks=all有用吗？当然没用了，因为ISR里就一个Leader，他接收完消息后宕机，也会导致数据丢失。所以说，**这个acks=all，必须跟ISR列表里至少有2个以上的副本配合使用，起码是有一个Leader和一个Follower才可以**。这样才能保证说写一条数据过去，一定是2个以上的副本都收到了才算是成功，此时任何一个副本宕机，不会导致数据丢失。
+
+
+
+
+
+## RocketMQ
+
+
+
+### rocketMQ介绍
+
+#### 1.RocketMQ整体架构
+
+
+
+
 
 
 
@@ -2464,32 +2590,141 @@ public class RemoteService {
 
 
 
+## Spring Cache
+
+### 1. JSR107
+
+Java Caching定义了5个核心接口，分别是CachingProvider, CacheManager, Cache, Entry 和 Expiry。
+
+1. CachingProvider定义了创建、配置、获取、管理和控制多个CacheManager。一个应用可以在运行期访问多个CachingProvider。
+2. CacheManager定义了创建、配置、获取、管理和控制多个唯一命名的Cache，这些Cache存在于CacheManager的上下文中。一个CacheManager仅被一个CachingProvider所拥有。
+3. Cache是一个类似Map的数据结构并临时存储以Key为索引的值。一个Cache仅被一个CacheManager所拥有。
+4. Entry是一个存储在Cache中的key-value对.
+5. Expiry 每一个存储在Cache中的条目有一个定义的有效期。一旦超过这个时间，条目为过期的状态。一旦过期，条目将不可访问、更新和删除。缓存有效期可以通过ExpiryPolicy设置。
+
+如下图所示:
+
+![img](picture/myP/jsr107.jpg)
+
+
+
+### 2.spring缓存抽象
+
+Spring从3.1开始定义了org.springframework.cache.Cache和org.springframework.cache.CacheManager接口来统一不同的缓存技术；并支持使用JCache（JSR-107）注解简化我们开发
+
+1 Cache接口为缓存的组件规范定义，包含缓存的各种操作集合
+
+2 Cache接口下Spring提供了各种xxxCache的实现,如RedisCache,EhCacheCache , ConcurrentMapCache等；每次调用需要缓存功能的方法时，Spring会检查检查指定参数的指定的目标方法是否已经被调用过；如果有就直接从缓存中获取方法调用后的结果，如果没有就调用方法并缓存结果返回给用户。下次直接从缓存中获取。
+
+3 使用Spring缓存抽象时我们需要关注以下两点；
+
+1. 确定方法需要被缓存以及他们的缓存策略  
+2. 从缓存中读取之前缓存存储的数据
+
+![img](picture/myP/spring缓存抽象.jpg)
+
+
+
+### 3.缓存注解
+
+![img](picture/myP/spring cache缓存注解1.jpg)
+
+
+
+![img](picture/myP/spring cache缓存注解2.jpg)
+
+
+
+同样支持spel表达式
+
+![img](picture/myP/spring cache缓存注解3.jpg)
+
+
+
+### 4.spring 支持的CacheManager
+
+针对不同的缓存技术，需要实现不同的CacheManager ,spring 定义了如下表的CacheManager实现。
+
+![img](picture/myP/spring CacheManager.jpg)
 
 
 
 
 
+### 5.缓存使用
+
+要在Springboot中使用缓存需要以下几步:
+
+第一步： 导入spring-boot-starter-cache模块
+
+```xml
+ <!-- 结合guava 配置Spring Cache -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-cache</artifactId>
+            <version>2.0.0.RELEASE</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>25.0-jre</version>
+        </dependency>
+```
 
 
 
+第二步： @EnableCaching开启缓存
+
+```java
+@Configuration
+public class ReferenceConfiguration {
+    @Configuration
+    @EnableCaching
+    public class GuavaCacheConfig{
+        /**
+         *  设置spring Cache 管理器，设置失效时间 300s
+         * @return
+         */
+        @Bean
+        public CacheManager cacheManager(){
+            GuavaCacheManager cacheManager = new GuavaCacheManager();
+            cacheManager.setCacheBuilder(
+                    CacheBuilder.newBuilder()
+                            .expireAfterAccess(300, TimeUnit.SECONDS)
+                            .maximumSize(1000)
+                );
+            return cacheManager;
+        }
+    }
+}
+
+@EnableCaching
+public class Main {}
+```
 
 
 
+  第三步： 使用缓存注解
+
+```java
+ @Cacheable(value = "merchants",key = "#merchantInfoId",unless = "#result==null")
+ public MerchantInfoDef getMerchantInfoByPK(String merchantInfoId){
+        return merchantInfoService.queryMerchantInfoByPK(merchantInfoId);
+ }
+```
 
 
 
+### 6.优缺点
 
+#### 优点
 
+- 方便快捷高效，可直接嵌入多个现有的 cache 实现，简写了很多代码，可观性非常强。
 
+#### 缺点
 
-
-
-
-
-
-
-
-
+1. 内部调用，非 public 方法上使用注解，会导致缓存无效。由于 SpringCache 是基于 Spring AOP 的动态代理实现，由于代理本身的问题，当同一个类中调用另一个方法，会导致另一个方法的缓存不能使用，这个在编码上需要注意，避免在同一个类中这样调用。如果非要这样做，可以通过再次代理调用，如 ((Category)AopContext.currentProxy()).get(category) 这样避免缓存无效。
+2. 不能支持多级缓存设置，如默认到本地缓存取数据，本地缓存没有则去远端缓存取数据，然后远程缓存取回来数据再存到本地缓存。
 
 
 
