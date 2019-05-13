@@ -2,7 +2,30 @@
 
 ```
 this.applicationContext.getBeansWithAnnotation(MessageListener.class);
+public List<HystrixProperty> getCommandProperties() {
+        if (!isCommandAnnotationPresent()) return Collections.emptyList();
+        return getOrDefault(new Supplier<List<HystrixProperty>>() {
+            @Override
+            public List<HystrixProperty> get() {
+                return ImmutableList.copyOf(hystrixCommand.commandProperties());
+            }
+        }, new Supplier<List<HystrixProperty>>() {
+            @Override
+            public List<HystrixProperty> get() {
+                return hasDefaultProperties()
+                        ? ImmutableList.copyOf(defaultProperties.commandProperties())
+                        : Collections.<HystrixProperty>emptyList();
+            }
+        }, this.<HystrixProperty>nonEmptyList());
+    }
+
 ```
+
+
+
+
+
+[Sentinel](https://github.com/alibaba/Sentinel)  : 替代 Hystrix
 
 # 😈 maven 
 
@@ -81,6 +104,21 @@ this.applicationContext.getBeansWithAnnotation(MessageListener.class);
 ```
 
 
+
+```
+	<insert id="insertForEach" parameterType="com.lvmama.comm.pet.po.pay.PayPaymentNotifiers"  >
+		insert into PAY_PAYMENT_NOTIFIERS (
+			OBJECT_ID, ORI_ID,
+			NOTIFY_TYPE, PAYMENT_TRADE_NO, REFUND_SERIAL, NOTIFY_STATUS,
+			CREATE_TIME, UPDATE_TIME, REMARK, NOTIFY_SYSTEM)
+			values 
+			<foreach collection="list" item="item" index="index" separator=",">
+				(#{item.objectId}, #{item.oriId}, #{item.notifyType}, #{item.paymentTradeNo}, #{item.refundSerial}, #{item.notifyStatus},
+				NOW(), NOW(), #{item.remark}, #{item.notifySystem})
+			</foreach>
+
+	</insert>
+```
 
 
 
@@ -2363,9 +2401,101 @@ String[].class.getGenericSuperclass()	class java.lang.Object
 
 
 
+
+
+#### 泛型
+
+**一、当泛型遇到重载** 
+
+```
+  public class GenericTypes {
+      public static void method(List<String> list) {  
+            System.out.println("invoke method(List<String> list)");  
+        }  
+
+    public static void method(List<Integer> list) {  
+        System.out.println("invoke method(List<Integer> list)");  
+    }  
+}  
+复制代码
+```
+
+上面这段代码，有两个重载的函数，因为他们的参数类型不同，一个是List另一个是List ，但是，这段代码是编译通不过的。因为我们前面讲过，参数List和List编译之后都被擦除了，变成了一样的原生类型List，擦除动作导致这两个方法的特征签名变得一模一样。
+
+**二、当泛型遇到catch** 泛型的类型参数不能用在Java异常处理的catch语句中。因为异常处理是由JVM在运行时刻来进行的。由于类型信息被擦除，JVM是无法区分两个异常类型`MyException<String>`和`MyException<Integer>`的
+
+**三、当泛型内包含静态变量**
+
+```
+public class StaticTest{
+    public static void main(String[] args){
+        GT<Integer> gti = new GT<Integer>();
+        gti.var=1;
+        GT<String> gts = new GT<String>();
+        gts.var=2;
+        System.out.println(gti.var);
+    }
+}
+class GT<T>{
+    public static int var=0;
+    public void nothing(T x){}
+}
+复制代码
+```
+
+以上代码输出结果为：2！由于经过类型擦除，所有的泛型类实例都关联到同一份字节码上，泛型类的所有静态变量是共享的。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # 😈 spring
 
-### 自定义ArgumentResolver
+## 自定义ArgumentResolver
 
 1.实现自定义的ArgumentResolver
 
@@ -2462,6 +2592,261 @@ public class WebConfiguration {
         return ERROR;
     }
 ```
+
+
+
+## AOP
+
+Spring Aop 中有两种动态代理，分别是JDK动态代理和Cglib动态代理，前者是基于接口，后者是基于继承
+
+
+
+
+
+### [aop切入点表达式](https://www.cnblogs.com/imzhuo/p/5888007.html)
+
+
+
+来了解下AspectJ类型匹配的通配符：
+*：匹配任何数量字符；
+..：匹配任何数量字符的重复，如在类型模式中匹配任何数量子包；而在方法参数模式中匹配任何数量参数。
++：匹配指定类型的子类型；仅能作为后缀放在类型模式后边。
+java.lang.String 匹配String类型；
+java.*.String 匹配java包下的任何“一级子包”下的String类型；
+如匹配java.lang.String，但不匹配java.lang.ss.String
+java..* 匹配java包及任何子包下的任何类型;
+如匹配java.lang.String、java.lang.annotation.Annotation
+java.lang.*ing 匹配任何java.lang包下的以ing结尾的类型；
+java.lang.Number+ 匹配java.lang包下的任何Number的自类型；
+如匹配java.lang.Integer，也匹配java.math.BigInteger
+
+```java
+1、切入点表达式：对指定的方法进行拦截，并且生成代理表达式。
+2、拦截所有public方法
+<aop:pointcut expression="execution(public * *(..))"id="pt"/>
+3、拦截所有save开头的方法
+<aop:pointcut expression="execution(* save*(..))" id="pt"/>
+4、拦截指定类的指定方法
+<aop:pointcut expression="execution(public * 包名.类名.方法名(..))" id="pt"/>
+5、拦截指定类的所有方法
+<aop:pointcut expression="execution(* 包名.类名.*(..))"id="pt"/>
+6、拦截指定包，以及其自包下所有类的所有方法
+<aop:pointcut expression="execution(* cn..*.*(..))"id="pt"/>
+7、多个表达式
+<aop:pointcut expression="execution(* 包名.类名.方法名(..)) || execution(* 包名.类名（不同的类）.方法名(..))"id="pt"/>
+<aop:pointcut expression="execution(* 包名.类名.方法名(..)) or execution(* 包名.类名（不同的类）.方法名(..))"id="pt"/>
+8、取非值
+<aop:pointcut expression="!execution(* 包名.类名.方法名(..))"id="pt"/>
+<aop:pointcut expression=" not execution(* 包名.类名.方法名(..))"id="pt"/>
+```
+
+```java
+public class PointCuts {
+    @Pointcut(value = "within(test.*)")
+    public void aopDemo() {
+ 
+    }
+}
+
+@Component
+@Aspect
+public class Aspect1 {
+ 
+    @Before(value = "test.PointCuts.aopDemo()")
+    public void before(JoinPoint joinPoint) {
+        System.out.println("[Aspect1] before advise");
+    }
+ 
+    @Around(value = "test.PointCuts.aopDemo()")
+    public void around(ProceedingJoinPoint pjp) throws  Throwable{
+        System.out.println("[Aspect1] around advise 1");
+        pjp.proceed();
+        System.out.println("[Aspect1] around advise2");
+    }
+ 
+    @AfterReturning(value = "test.PointCuts.aopDemo()")
+    public void afterReturning(JoinPoint joinPoint) {
+        System.out.println("[Aspect1] afterReturning advise");
+    }
+ 
+    @AfterThrowing(value = "test.PointCuts.aopDemo()")
+    public void afterThrowing(JoinPoint joinPoint) {
+        System.out.println("[Aspect1] afterThrowing advise");
+    }
+ 
+    @After(value = "test.PointCuts.aopDemo()")
+    public void after(JoinPoint joinPoint) {
+        System.out.println("[Aspect1] after advise");
+    }
+}
+```
+
+在一个方法只被一个aspect类拦截时，aspect类内部的 advice 将按照以下的顺序进行执行：
+
+![one-ok](picture/myP/AOP%E6%89%A7%E8%A1%8C%E6%B5%81%E7%A8%8B.jpg)
+
+
+
+### 关于AOP无法切入同类调用方法的问题
+
+```java
+public class Service {
+ 
+/**
+ * 被Controller调用的方法
+ * 这个方法调用被切的方法
+*/
+ public void callMethodA() {
+    ......
+    callMethodB();
+    ......
+}
+ 
+/**
+ * Aop切入的方法
+*/
+ public void callMethodB() {
+	......
+ }
+}
+
+
+
+/**
+ * AOP的实现
+*/
+public class Aspect {
+ 
+ @AfterReturning("execution(* Service.callMethodB(..)))
+ public void after() {
+	 Logger.info(&quot;after call and do something.&quot;);
+ }
+}
+
+
+```
+
+调用callMethodA，在callMethodA中调用callMethodB，无法切入.  callMethodA()中callMethodB()方法调用，实际是this.callMethodB() 而aop实际是创建了代理对象，通多代理对象调用callMethodB()，因而当直接调用callMethodA()时，并没有获取代理对象，所以aop无效
+
+
+
+被拦截的类的方法执行其实是通过由spring为该类生成的代理类调用指定方法实现的，如下：
+ServiceProxy serviceProxy;
+serviceProxy.callMethodA();
+而**在callMethodA方法内部再调用callMethodB()，其实是this.callMethodB(),这个this是Service的对象，即被代理的对象，而不是代理对象（serviceProxy）**
+其实任何的拦截，都是依赖“代理”这种机制实现的，在真正调用方法的前后执行拦截操作，既然不是通过代理对象调用的，自然就失去了拦截的能力，故没有嵌套拦截的能力
+
+
+
+
+
+解决方法：
+
+1.避免嵌套调用
+
+2.嵌套调用时获取代理的对象  
+
+1. 通过Spring提供的ProxyFactoryBean来获取被拦截类的代理类的对象，然后发起调用，此时就能被拦截到了
+2. AopContext.currentProxy()获取代理对象
+
+```java
+public class Service {
+    public void callMethodA() {
+	......
+	 ((Service) AopContext.currentProxy()).callMethodB();
+	......
+	}
+} 
+
+Springboot 
+@EnableAspectJAutoProxy(exposeProxy = true)
+public class Main {}
+
+```
+
+
+
+如果是通过xml配置或当前springboot版本不支持
+
+可以配置一个aop.xml文件，文件内容如下：
+
+```java
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+           http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+           http://www.springframework.org/schema/aop
+           http://www.springframework.org/schema/aop/spring-aop-3.0.xsd">
+ 
+    <aop:aspectj-autoproxy proxy-target-class="true" expose-proxy="true"/>
+ 
+</beans>
+```
+
+然后在ApplicationMain中添加注解如下：
+@ImportResource(locations = "aop.xml")
+
+```java
+public class ProxyConfig implements Serializable {
+    // 这个参数是用来控制当前是否指定只使用Cglib代理
+    private boolean proxyTargetClass = false;
+
+    // 标记是否对代理进行优化。启动优化通常意味着在代理对象被创建后，增强的修改将不会生效，因此默认值为false。
+    // 如果exposeProxy设置为true，即使optimize为true也会被忽略。
+    private boolean optimize = false;
+    
+    // 标记是否需要阻止通过该配置创建的代理对象转换为Advised类型，默认值为false，表示代理对象可以被转换为Advised类型
+    boolean opaque = false;
+
+    // 标记代理对象是否应该被aop框架通过AopContext以ThreadLocal的形式暴露出去。
+    // 当一个代理对象需要调用它自己的另外一个代理方法时，这个属性将非常有用。默认是是false，以避免不必要的拦截。
+    boolean exposeProxy = false;
+
+    // 标记该配置是否需要被冻结，如果被冻结，将不可以修改增强的配置。
+    // 当我们不希望调用方修改转换成Advised对象之后的代理对象时，这个配置将非常有用。
+    private boolean frozen = false;
+}
+
+```
+
+
+
+我们需要关注的就是 exposeProxy 属性，如果这个属性值 true，那么 Spring 在代理的时候就会将当前这个代理对象放在 ThreadLoacl 中，我们在使用fun1方法的时候，调用fun2就可以改为：
+
+```java
+public void fun1(){
+    System.out.println("fun1 ...");
+    ((OrderService)AopContext.currentProxy()).fun2();
+}
+```
+
+点开 AopContext.currentProxy() 对象无非就是从 ThreadLoacl 中获取。**需要注意的是，如果采用这种方式，但是没有设置 exposeProxy = true，那么会抛出 IllegalStateException 异常。**
+
+
+
+
+
+
+
+
+
+参考：
+
+[关于AOP无法切入同类调用方法的问题](https://www.cnblogs.com/fanguangdexiaoyuer/p/7620534.html)
+
+[AOP方法嵌套调用为何失效和解决方案](https://blog.csdn.net/Liu_York/article/details/86681933)
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -2651,7 +3036,7 @@ Spring从3.1开始定义了org.springframework.cache.Cache和org.springframework
 
 
 
-### 5.缓存使用
+### 5.缓存使用(guavaCacheManager)
 
 要在Springboot中使用缓存需要以下几步:
 
@@ -2717,288 +3102,53 @@ public class Main {}
 
 ### 6.优缺点
 
-#### 优点
+优点
 
 - 方便快捷高效，可直接嵌入多个现有的 cache 实现，简写了很多代码，可观性非常强。
 
-#### 缺点
+缺点
 
 1. 内部调用，非 public 方法上使用注解，会导致缓存无效。由于 SpringCache 是基于 Spring AOP 的动态代理实现，由于代理本身的问题，当同一个类中调用另一个方法，会导致另一个方法的缓存不能使用，这个在编码上需要注意，避免在同一个类中这样调用。如果非要这样做，可以通过再次代理调用，如 ((Category)AopContext.currentProxy()).get(category) 这样避免缓存无效。
 2. 不能支持多级缓存设置，如默认到本地缓存取数据，本地缓存没有则去远端缓存取数据，然后远程缓存取回来数据再存到本地缓存。
 
 
 
+## sping Hystrix
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# AOP
-
-Spring Aop 中有两种动态代理，分别是JDK动态代理和Cglib动态代理，前者是基于接口，后者是基于继承
-
-
-
-
-
-## [aop切入点表达式](https://www.cnblogs.com/imzhuo/p/5888007.html)
-
-
-
-来了解下AspectJ类型匹配的通配符：
-*：匹配任何数量字符；
-..：匹配任何数量字符的重复，如在类型模式中匹配任何数量子包；而在方法参数模式中匹配任何数量参数。
-+：匹配指定类型的子类型；仅能作为后缀放在类型模式后边。
-java.lang.String 匹配String类型；
-java.*.String 匹配java包下的任何“一级子包”下的String类型；
-如匹配java.lang.String，但不匹配java.lang.ss.String
-java..* 匹配java包及任何子包下的任何类型;
-如匹配java.lang.String、java.lang.annotation.Annotation
-java.lang.*ing 匹配任何java.lang包下的以ing结尾的类型；
-java.lang.Number+ 匹配java.lang包下的任何Number的自类型；
-如匹配java.lang.Integer，也匹配java.math.BigInteger
 
 ```java
-1、切入点表达式：对指定的方法进行拦截，并且生成代理表达式。
-2、拦截所有public方法
-<aop:pointcut expression="execution(public * *(..))"id="pt"/>
-3、拦截所有save开头的方法
-<aop:pointcut expression="execution(* save*(..))" id="pt"/>
-4、拦截指定类的指定方法
-<aop:pointcut expression="execution(public * 包名.类名.方法名(..))" id="pt"/>
-5、拦截指定类的所有方法
-<aop:pointcut expression="execution(* 包名.类名.*(..))"id="pt"/>
-6、拦截指定包，以及其自包下所有类的所有方法
-<aop:pointcut expression="execution(* cn..*.*(..))"id="pt"/>
-7、多个表达式
-<aop:pointcut expression="execution(* 包名.类名.方法名(..)) || execution(* 包名.类名（不同的类）.方法名(..))"id="pt"/>
-<aop:pointcut expression="execution(* 包名.类名.方法名(..)) or execution(* 包名.类名（不同的类）.方法名(..))"id="pt"/>
-8、取非值
-<aop:pointcut expression="!execution(* 包名.类名.方法名(..))"id="pt"/>
-<aop:pointcut expression=" not execution(* 包名.类名.方法名(..))"id="pt"/>
-```
+@Service
+public class GreetingService {
+    @HystrixCommand(
+            fallbackMethod = "defaultGreeting",
+            ignoreExceptions = RuntimeException.class
 
-```java
-public class PointCuts {
-    @Pointcut(value = "within(test.*)")
-    public void aopDemo() {
- 
+    )
+    public String getGreeting(String username) {
+       return Optional.ofNullable(new RestTemplate()
+                .getForObject("http://localhost:9090/greeting/{username}",
+                        String.class, username))
+                .orElseThrow( ()-> new RuntimeException("request fail"));
     }
-}
 
-@Component
-@Aspect
-public class Aspect1 {
- 
-    @Before(value = "test.PointCuts.aopDemo()")
-    public void before(JoinPoint joinPoint) {
-        System.out.println("[Aspect1] before advise");
-    }
- 
-    @Around(value = "test.PointCuts.aopDemo()")
-    public void around(ProceedingJoinPoint pjp) throws  Throwable{
-        System.out.println("[Aspect1] around advise 1");
-        pjp.proceed();
-        System.out.println("[Aspect1] around advise2");
-    }
- 
-    @AfterReturning(value = "test.PointCuts.aopDemo()")
-    public void afterReturning(JoinPoint joinPoint) {
-        System.out.println("[Aspect1] afterReturning advise");
-    }
- 
-    @AfterThrowing(value = "test.PointCuts.aopDemo()")
-    public void afterThrowing(JoinPoint joinPoint) {
-        System.out.println("[Aspect1] afterThrowing advise");
-    }
- 
-    @After(value = "test.PointCuts.aopDemo()")
-    public void after(JoinPoint joinPoint) {
-        System.out.println("[Aspect1] after advise");
+    private String defaultGreeting(String username) {
+        return "Hello User!";
     }
 }
 ```
 
-在一个方法只被一个aspect类拦截时，aspect类内部的 advice 将按照以下的顺序进行执行：
-
-![one-ok](./picture/myP/AOP执行流程.jpg)
 
 
-
-
-
-
+>Normally a @HytrixCommand annotated method is executed **in a thread pool context.** But sometimes it needs to be running in **a local scope, for example, a @SessionScope or a @RequestScope**. This can be done via giving arguments to the command annotation:
+>
+>@HystrixCommand(fallbackMethod = "getSomeDefault", commandProperties = {
+>  @HystrixProperty(name = "execution.isolation.strategy", value = "SEMAPHORE")
+>})
 
 
 
 
-
-
-
-## 关于AOP无法切入同类调用方法的问题
-
-```java
-public class Service {
- 
-/**
- * 被Controller调用的方法
- * 这个方法调用被切的方法
-*/
- public void callMethodA() {
-    ......
-    callMethodB();
-    ......
-}
- 
-/**
- * Aop切入的方法
-*/
- public void callMethodB() {
-	......
- }
-}
-
-
-
-/**
- * AOP的实现
-*/
-public class Aspect {
- 
- @AfterReturning("execution(* Service.callMethodB(..)))
- public void after() {
-	 Logger.info(&quot;after call and do something.&quot;);
- }
-}
-
-
-```
-
-调用callMethodA，在callMethodA中调用callMethodB，无法切入.  callMethodA()中callMethodB()方法调用，实际是this.callMethodB() 而aop实际是创建了代理对象，通多代理对象调用callMethodB()，因而当直接调用callMethodA()时，并没有获取代理对象，所以aop无效
-
-
-
-被拦截的类的方法执行其实是通过由spring为该类生成的代理类调用指定方法实现的，如下：
-ServiceProxy serviceProxy;
-serviceProxy.callMethodA();
-而**在callMethodA方法内部再调用callMethodB()，其实是this.callMethodB(),这个this是Service的对象，即被代理的对象，而不是代理对象（serviceProxy）**
-其实任何的拦截，都是依赖“代理”这种机制实现的，在真正调用方法的前后执行拦截操作，既然不是通过代理对象调用的，自然就失去了拦截的能力，故没有嵌套拦截的能力
-
-
-
-
-
-解决方法：
-
-1.避免嵌套调用
-
-2.嵌套调用时获取代理的对象  
-
-1. 通过Spring提供的ProxyFactoryBean来获取被拦截类的代理类的对象，然后发起调用，此时就能被拦截到了
-2.  AopContext.currentProxy()获取代理对象
-
-```java
-public class Service {
-    public void callMethodA() {
-	......
-	 ((Service) AopContext.currentProxy()).callMethodB();
-	......
-	}
-} 
-
-Springboot 
-@EnableAspectJAutoProxy(exposeProxy = true)
-public class Main {}
-
-```
-
-
-
-如果是通过xml配置或当前springboot版本不支持
-
-可以配置一个aop.xml文件，文件内容如下：
-
-```java
-<?xml version="1.0" encoding="UTF-8"?>
-<beans xmlns="http://www.springframework.org/schema/beans"
-       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-       xmlns:aop="http://www.springframework.org/schema/aop"
-       xsi:schemaLocation="http://www.springframework.org/schema/beans
-           http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
-           http://www.springframework.org/schema/aop
-           http://www.springframework.org/schema/aop/spring-aop-3.0.xsd">
- 
-    <aop:aspectj-autoproxy proxy-target-class="true" expose-proxy="true"/>
- 
-</beans>
-```
-
-然后在ApplicationMain中添加注解如下：
-@ImportResource(locations = "aop.xml")
-
-```java
-public class ProxyConfig implements Serializable {
-    // 这个参数是用来控制当前是否指定只使用Cglib代理
-    private boolean proxyTargetClass = false;
-
-    // 标记是否对代理进行优化。启动优化通常意味着在代理对象被创建后，增强的修改将不会生效，因此默认值为false。
-    // 如果exposeProxy设置为true，即使optimize为true也会被忽略。
-    private boolean optimize = false;
-    
-    // 标记是否需要阻止通过该配置创建的代理对象转换为Advised类型，默认值为false，表示代理对象可以被转换为Advised类型
-    boolean opaque = false;
-
-    // 标记代理对象是否应该被aop框架通过AopContext以ThreadLocal的形式暴露出去。
-    // 当一个代理对象需要调用它自己的另外一个代理方法时，这个属性将非常有用。默认是是false，以避免不必要的拦截。
-    boolean exposeProxy = false;
-
-    // 标记该配置是否需要被冻结，如果被冻结，将不可以修改增强的配置。
-    // 当我们不希望调用方修改转换成Advised对象之后的代理对象时，这个配置将非常有用。
-    private boolean frozen = false;
-}
-
-```
-
-
-
-我们需要关注的就是 exposeProxy 属性，如果这个属性值 true，那么 Spring 在代理的时候就会将当前这个代理对象放在 ThreadLoacl 中，我们在使用fun1方法的时候，调用fun2就可以改为：
-
-```java
-public void fun1(){
-    System.out.println("fun1 ...");
-    ((OrderService)AopContext.currentProxy()).fun2();
-}
-```
-
-点开 AopContext.currentProxy() 对象无非就是从 ThreadLoacl 中获取。**需要注意的是，如果采用这种方式，但是没有设置 exposeProxy = true，那么会抛出 IllegalStateException 异常。**
-
-
-
-
-
-
-
-
-
-参考：
-
-[关于AOP无法切入同类调用方法的问题](https://www.cnblogs.com/fanguangdexiaoyuer/p/7620534.html)
-
-[AOP方法嵌套调用为何失效和解决方案](https://blog.csdn.net/Liu_York/article/details/86681933)
 
 
 
