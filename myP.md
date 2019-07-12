@@ -27,6 +27,46 @@ public List<HystrixProperty> getCommandProperties() {
 
 [Sentinel](https://github.com/alibaba/Sentinel)  : 替代 Hystrix
 
+
+
+
+
+
+
+
+
+针对分布式领域著名的CAP理论（C——数据一致性，A——服务可用性，P——服务对网络分区故障的容错性），**Zookeeper 保证的是CP ，但对于服务发现而言，可用性比数据一致性更加重要 ，而 Eureka 设计则遵循AP原则** 。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+git:
+
+<https://github.com/hollischuang/toBeTopJavaer?utm_source=gold_browser_extension>
+
+<https://github.com/Snailclimb/JavaGuide?utm_source=gold_browser_extension>
+
+<https://github.com/CyC2018/CS-Notes?utm_source=gold_browser_extension>
+
+<https://github.com/doocs/advanced-java?utm_source=gold_browser_extension>
+
+
+
+
+
+
+
 # 😈 maven 
 
 ```xml
@@ -231,6 +271,7 @@ AnnotationUtils			org.springframework.core.annotation
 BeanUtils				org.springframework.beans
 BeanUtils				org.apache.commons.beanutils
 ClassHelper				org.apache.dubbo.common.utils
+ClassUtils				org.springframework.util
 Collections				java.util
 ObjectUtils				package org.springframework.util;
 ReflectUtils			org.apache.dubbo.common.utils
@@ -268,6 +309,8 @@ ReflectionUtils.makeAccessible(Constructor);
 BeanUtils.instantiateClass(class) 实例化一个指定class class不能是一个接口  Instantiate a class using its no-arg constructor.
 BeanUtils.findMethodWithMinimalParameters(class,methodName ) //匹配 方法名相同，参数最少的方法
 BeanUtils.cloneBean()
+// org.springframework.util  将,组成的str 分割成array
+StringUtils.commaDelimitedListToStringArray
 ```
 
 
@@ -590,6 +633,108 @@ new CopyOnWriteMap<TopicPartition, Deque<RecordBatch>>();
 # 线程
 
 Executors.newSingleThreadExecutor().execute
+
+
+
+
+
+
+
+## [Java 8 中 Date与LocalDateTime、LocalDate、LocalTime互转](https://www.cnblogs.com/exmyth/p/6425878.html)
+
+```java
+ 
+
+Java 8中 java.util.Date 类新增了两个方法，分别是from(Instant instant)和toInstant()方法
+
+// Obtains an instance of Date from an Instant object.
+public static Date from(Instant instant) {
+    try {
+        return new Date(instant.toEpochMilli());
+    } catch (ArithmeticException ex) {
+        throw new IllegalArgumentException(ex);
+    }
+}
+
+// Converts this Date object to an Instant.
+public Instant toInstant() {
+    return Instant.ofEpochMilli(getTime());
+}
+
+ 
+
+这两个方法使我们可以方便的实现将旧的日期类转换为新的日期类，具体思路都是通过Instant当中介，然后通过Instant来创建LocalDateTime（这个类可以很容易获取LocalDate和LocalTime），新的日期类转旧的也是如此，将新的先转成LocalDateTime，然后获取Instant，接着转成Date，具体实现细节如下：
+
+// 01. java.util.Date --> java.time.LocalDateTime
+public void UDateToLocalDateTime() {
+    java.util.Date date = new java.util.Date();
+    Instant instant = date.toInstant();
+    ZoneId zone = ZoneId.systemDefault();
+    LocalDateTime localDateTime = LocalDateTime.ofInstant(instant, zone);
+}
+
+// 02. java.util.Date --> java.time.LocalDate
+public void UDateToLocalDate() {
+    java.util.Date date = new java.util.Date();
+    Instant instant = date.toInstant();
+    ZoneId zone = ZoneId.systemDefault();
+    LocalDateTime localDateTime = LocalDateTime.ofInstant(instant, zone);
+    LocalDate localDate = localDateTime.toLocalDate();
+}
+
+// 03. java.util.Date --> java.time.LocalTime
+public void UDateToLocalTime() {
+    java.util.Date date = new java.util.Date();
+    Instant instant = date.toInstant();
+    ZoneId zone = ZoneId.systemDefault();
+    LocalDateTime localDateTime = LocalDateTime.ofInstant(instant, zone);
+    LocalTime localTime = localDateTime.toLocalTime();
+}
+
+
+// 04. java.time.LocalDateTime --> java.util.Date
+public void LocalDateTimeToUdate() {
+    LocalDateTime localDateTime = LocalDateTime.now();
+    ZoneId zone = ZoneId.systemDefault();
+    Instant instant = localDateTime.atZone(zone).toInstant();
+    java.util.Date date = Date.from(instant);
+}
+
+
+// 05. java.time.LocalDate --> java.util.Date
+public void LocalDateToUdate() {
+    LocalDate localDate = LocalDate.now();
+    ZoneId zone = ZoneId.systemDefault();
+    Instant instant = localDate.atStartOfDay().atZone(zone).toInstant();
+    java.util.Date date = Date.from(instant);
+}
+
+// 06. java.time.LocalTime --> java.util.Date
+public void LocalTimeToUdate() {
+    LocalTime localTime = LocalTime.now();
+    LocalDate localDate = LocalDate.now();
+    LocalDateTime localDateTime = LocalDateTime.of(localDate, localTime);
+    ZoneId zone = ZoneId.systemDefault();
+    Instant instant = localDateTime.atZone(zone).toInstant();
+    java.util.Date date = Date.from(instant);
+}
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1396,7 +1541,454 @@ public class MyConfig {
 
 
 
+### @ImplementedBy 
 
+@ImplementedBy(**DiscoveryClient.class**)
+public interface EurekaClient extends LookupService {}
+
+指定接口的实现类
+
+
+
+### @Order @Primary @Qualifer
+
+`@Order是`控制配置类的加载顺序，还能控制List<XXX> 里面放的XXX的实现注入的顺序
+
+独使用@Order(1), @Order(2) Order注解仅仅用于控制组件的加载顺序，**不能控制注入优先级**
+
+遇到接口多实现的问题，那么要具体注入那个接口的实现就需要@Primary或@Qualifier控制了
+
+参考：https://blog.csdn.net/weixin_42465125/article/details/88574670
+
+
+
+
+
+
+
+### @EnableConfigurationProperties
+
+```java
+
+1.
+@ConfigurationProperties(prefix = "spring.mvc")
+public class WebMvcProperties {
+	private Locale locale;
+    public Locale getLocale() {
+		return this.locale;
+	}
+	public void setLocale(Locale locale) {
+		this.locale = locale;
+	}
+}
+在配置文件中加载prefix对应属性
+spring.mvc.locale=xxxxx
+
+
+2.导入importSelector，EnableConfigurationPropertiesImportSelector会调用 selectImports(AnnotationMetadata metadata) 方法，返回需要加载的bean的类名
+@Import(EnableConfigurationPropertiesImportSelector.class)
+public @interface EnableConfigurationProperties {
+    Class<?>[] value() default {};
+}
+
+3.根据EnableConfigurationProperties的value是否有值，返回指定beanDefinitionRegister
+class EnableConfigurationPropertiesImportSelector implements ImportSelector {
+    
+@Override
+public String[] selectImports(AnnotationMetadata metadata) {
+    //获取所有的EnableConfigurationProperties注解，MultiValueMap一个key对应一个list<V>
+	MultiValueMap<String, Object> attributes = metadata.getAllAnnotationAttributes(
+			EnableConfigurationProperties.class.getName(), false);
+	//判断注解是否有值
+    Object[] type = attributes == null ? null
+			: (Object[]) attributes.getFirst("value");
+	if (type == null || type.length == 0) {
+		return new String[] {
+				ConfigurationPropertiesBindingPostProcessorRegistrar.class
+						.getName() };
+	}
+    //如果注解value有值，返回如下两个类名，加载这两个类
+	return new String[] { ConfigurationPropertiesBeanRegistrar.class.getName(),
+			ConfigurationPropertiesBindingPostProcessorRegistrar.class.getName() };
+} 
+}
+
+4.实际的bean加载过程
+public static class ConfigurationPropertiesBeanRegistrar
+	implements ImportBeanDefinitionRegistrar {
+
+	@Override
+	public void registerBeanDefinitions(AnnotationMetadata metadata,
+			BeanDefinitionRegistry registry) {
+        //获取EnableConfigurationProperties注解
+		MultiValueMap<String, Object> attributes = metadata
+				.getAllAnnotationAttributes(
+						EnableConfigurationProperties.class.getName(), false);
+		//获取多个EnableConfigurationProperties注解中的value值，统一放到一个list<Class<?>>
+        List<Class<?>> types = collectClasses(attributes.get("value"));
+		//遍历types，加载types中的类
+        for (Class<?> type : types) {
+			String prefix = extractPrefix(type);
+			String name = (StringUtils.hasText(prefix) ? prefix + "-" + type.getName()
+					: type.getName());
+			if (!registry.containsBeanDefinition(name)) {
+				registerBeanDefinition(registry, type, name);
+			}
+		}
+	}
+
+	private String extractPrefix(Class<?> type) {
+        //根据指定类上的注解ConfigurationProperties
+        //WebMvcProperties---》@ConfigurationProperties(prefix = "spring.mvc")
+		ConfigurationProperties annotation = AnnotationUtils.findAnnotation(type,
+				ConfigurationProperties.class);
+		if (annotation != null) {
+			return annotation.prefix();
+		}
+		return "";
+	}
+
+	private List<Class<?>> collectClasses(List<Object> list) {
+		ArrayList<Class<?>> result = new ArrayList<Class<?>>();
+		for (Object object : list) {
+			for (Object value : (Object[]) object) {
+				if (value instanceof Class && value != void.class) {
+					result.add((Class<?>) value);
+				}
+			}
+		}
+		return result;
+	}
+
+	private void registerBeanDefinition(BeanDefinitionRegistry registry,
+			Class<?> type, String name) {
+        //构建beanDefinition
+		BeanDefinitionBuilder builder = BeanDefinitionBuilder
+				.genericBeanDefinition(type);
+		AbstractBeanDefinition beanDefinition = builder.getBeanDefinition();
+		registry.registerBeanDefinition(name, beanDefinition);
+
+        //找到指定类type上的注解@ConfigurationProperties
+		ConfigurationProperties properties = AnnotationUtils.findAnnotation(type,
+				ConfigurationProperties.class);
+		Assert.notNull(properties,
+				"No " + ConfigurationProperties.class.getSimpleName()
+						+ " annotation found on  '" + type.getName() + "'.");
+	}
+
+}    
+
+综上，@EnableConfigurationProperties({ WebMvcProperties.class,ResourceProperties.class}) 就是通过beanDefinitionRegister加载是value={WebMvcProperties.class,ResourceProperties.class}中的指定类
+
+
+@Configuration
+@Import(EnableWebMvcConfiguration.class)
+@EnableConfigurationProperties({ WebMvcProperties.class, ResourceProperties.class })
+public static class WebMvcAutoConfigurationAdapter extends WebMvcConfigurerAdapter {
+    private final WebMvcProperties mvcProperties;
+    
+    public WebMvcAutoConfigurationAdapter(ResourceProperties resourceProperties,
+				WebMvcProperties mvcProperties, ListableBeanFactory beanFactory,
+				@Lazy HttpMessageConverters messageConverters,
+				ObjectProvider<ResourceHandlerRegistrationCustomizer> resourceHandlerRegistrationCustomizerProvider) {
+			this.resourceProperties = resourceProperties;
+        //通过参数注入
+			this.mvcProperties = mvcProperties;
+			this.beanFactory = beanFactory;
+			this.messageConverters = messageConverters;
+			this.resourceHandlerRegistrationCustomizer = resourceHandlerRegistrationCustomizerProvider
+					.getIfAvailable();
+		}
+}
+```
+
+
+
+### @WebFilter
+
+
+
+
+
+|     **属性**      |     **类型**     | **是否必需** |                           **说明**                           |
+| :---------------: | :--------------: | :----------: | :----------------------------------------------------------: |
+|  asyncSupported   |     boolean      |      否      |                  指定Filter是否支持异步模式                  |
+|  dispatcherTypes  | DispatcherType[] |      否      | 指定Filter对哪种方式的请求进行过滤。 支持的属性：ASYNC、ERROR、FORWARD、INCLUDE、REQUEST； 默认过滤所有方式的请求 |
+|    filterName     |      String      |      否      |                          Filter名称                          |
+|    initParams     |  WebInitParam[]  |      否      |                           配置参数                           |
+|    displayName    |      String      |      否      |                         Filter显示名                         |
+|   servletNames    |     String[]     |      否      |                  指定对哪些Servlet进行过滤                   |
+| urlPatterns/value |     String[]     |      否      |               两个属性作用相同，指定拦截的路径               |
+
+
+
+**过滤器的urlPatterns的过滤路径规则：**
+
+1.全路径匹配： /abc/myServlet1.do
+
+2.部分路径匹配： /abc/*
+
+3.通配符匹配 ：/*
+
+4.后缀名匹配 ：*.do (注意:前面不加/)
+
+
+
+注入方式：
+
+
+1. **Application启动类添加@ServletComponentScan注解**
+
+```JAVA
+@SpringBootApplication
+@ServletComponentScan   //Servlet、Filter、Listener 可以直接通过 @WebServlet、@WebFilter、@WebListener 注解自动注册，无需其他代码。
+public class Application {
+	public static void main(String[] args) {
+		SpringApplication.run(Application.class, args);
+	}
+}
+```
+
+
+
+2.  bean配置注入
+
+```java
+/**
+ * web层配置
+ */
+@Configuration
+public class WebConfiguration {
+    
+    @Bean
+    public FilterRegistrationBean companyUrlFilterRegister() {
+        FilterRegistrationBean registration = new FilterRegistrationBean();
+        //注入过滤器
+        registration.setFilter(new SessionFilter());
+        //拦截规则
+        registration.addUrlPatterns("/*");
+        //过滤器名称
+        registration.setName("sessionFilter");
+        //过滤器顺序
+        registration.setOrder(FilterRegistrationBean.LOWEST_PRECEDENCE);
+        return registration;
+    } 
+}
+
+@WebFilter(filterName = "sessionFilter", urlPatterns = "/*")
+public class SessionFilter implements Filter{
+    
+    private static final Logger LOGGER = LoggerFactory.getLogger(SessionFilter.class);
+
+    private static final PathMatcher pathMatcher = new AntPathMatcher();
+
+    private static final Set<String> ignores;
+
+    static {
+        ignores = new HashSet<>();
+        ignores.add("/**/page/**");
+        ignores.add("/**/static/**");
+    }
+
+
+    @Override
+    public void init(FilterConfig filterConfig) throws ServletException {
+
+    }
+
+    @Override
+    public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain chain)
+            throws IOException, ServletException {
+
+        HttpServletRequest request = (HttpServletRequest) servletRequest;
+        HttpServletResponse response = (HttpServletResponse) servletResponse;
+        String uri = request.getRequestURI().toLowerCase();
+        if (isIgnore(uri)) {
+            chain.doFilter(request, response);
+            return;
+        }
+        
+        PermUser session = (PermUser) ServletUtil.getSession(request, response, Constant.SESSION_BACK_USER);
+        
+        // TODO 到时候要删掉
+        session = new PermUser();
+        session.setUserId(111L);
+        session.setUserName("XB");
+        ProcessException.check(isLogin(session), CodeMsgEnum.PERMISSION_ERROR);
+        
+        SessionThreadLocal.set(session);
+        chain.doFilter(request, response);
+        SessionThreadLocal.remove();
+        
+    }
+    
+    private boolean isLogin(PermUser user) {
+        return user != null && user.getUserId() != null;
+    }
+
+    
+    private boolean isIgnore(String path) {
+        for (String resource : ignores) {
+            if (pathMatcher.match(resource, path)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public void destroy() {
+        
+    }
+
+}
+
+```
+
+
+
+
+
+
+
+
+
+例子
+
+实现一个Filter进行鉴权及页面重定向（未登录认证状态下跳转到登录页面）
+
+```JAVA
+@WebFilter(filterName = "WebAuthFilter", urlPatterns = "/web/*",
+        initParams = {
+            @WebInitParam(name = "excludedUrls", value = "/web/login")
+        }
+)
+public class WebAuthFilter implements Filter {
+
+    private List<String> excludedUrlList;
+
+    @Override
+    public void init(FilterConfig filterConfig) throws ServletException {
+        String excludedUrls = filterConfig.getInitParameter("excludeUrls");
+        excludedUrlList= Splitter.on(",").omitEmptyStrings().splitToList(excludedUrls);
+    }
+
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
+        String url = ((HttpServletRequest) request).getRequestURI();
+        if (excludedUrlList.contains(url)) {
+            chain.doFilter(request, response);
+        } else {
+            String sToken = ((HttpServletRequest) request).getHeader("Authorization");
+            if (sToken != null) {
+                Map<String, Object> map = TokenUtils.parseToken(sToken);
+                if (map == null) {
+                    ((HttpServletResponse)response).sendRedirect("/web/login");
+                }
+            } else {
+                ((HttpServletResponse)response).sendRedirect("/web/login");
+            }
+        }
+    }
+
+    @Override
+    public void destroy() {
+
+    }
+}
+```
+
+
+
+### @dubbo过滤器
+
+```java
+import com.alibaba.dubbo.rpc.Filter;
+@Activate(group = Constants.CONSUMER, order = -999)
+public class ConsumerFiltter implements Filter,  Constant {
+    
+    private static final Logger logger = LoggerFactory.getLogger(ConsumerFiltter.class);
+
+    private static String MONITORSERVICE = "MonitorService";
+
+    @Override
+    public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
+
+        String interfacName = invocation.getInvoker().getInterface().getName();
+        String methodName = invocation.getMethodName() ;
+       
+        // 监控日志直接放过
+        if (interfacName.indexOf(MONITORSERVICE) > -1) {
+            return invoker.invoke(invocation);
+        }
+
+        try {
+
+            Object[] arguments = invocation.getArguments();
+            logger.info(LOG_RPC_CON_REQ, interfacName, methodName,  LogFormat.toString(arguments));
+            Result result = invoker.invoke(invocation);
+            logger.info(LOG_RPC_CON_RESP,  interfacName, methodName, LogFormat.toString(result.getValue()));
+            
+            return result;
+        }  catch (Throwable t) {
+            logger.error(LOG_RPC_CON_EXCEPTION, interfacName, methodName, t.getMessage(), t);
+            return new RpcResult(new BaseResp<>(false, CodeMsgEnum.SERVICE_EXCEPTION.msg(), CodeMsgEnum.SERVICE_EXCEPTION.code()));
+        }
+    }
+}
+
+
+
+
+@Activate(group =Constants.PROVIDER, order = 1)
+public class ProviderFiltter implements Filter,  Constant {
+    
+    private static final Logger logger = LoggerFactory.getLogger(ProviderFiltter.class);
+
+    private static String MONITORSERVICE = "MonitorService";
+
+    @Override
+    public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
+
+        String interfacName = invocation.getInvoker().getInterface().getName();
+        String methodName = invocation.getMethodName() ;
+       
+        // 监控日志直接放过
+        if (interfacName.indexOf(MONITORSERVICE) > -1) {
+            return invoker.invoke(invocation);
+        }
+
+        Object[] arguments = invocation.getArguments();
+        logger.info(LOG_RPC_PRO_REQ, interfacName, methodName,  LogFormat.toString(arguments));
+        Result result = invoker.invoke(invocation);
+        
+        if (result.getException() == null) {
+            
+            logger.info(LOG_RPC_PRO_RESP,  interfacName, methodName, LogFormat.toString(result.getValue()));
+            return result;
+        } else if (result.getException() instanceof ProcessException)  {
+            
+            ProcessException e = (ProcessException) result.getException();
+            logger.error(LOG_RPC_PRO_EXCEPTION , interfacName, methodName, e.getMessage());
+            return new RpcResult(new BaseResp<>(false, e.getMessage(), e.getCode()));
+        } else {
+            
+            logger.error(LOG_RPC_PRO_EXCEPTION ,interfacName, methodName, result.getException().getMessage(), result.getException());
+            return new RpcResult(new BaseResp<>(false, CodeMsgEnum.SERVICE_EXCEPTION.msg(), CodeMsgEnum.SERVICE_EXCEPTION.code()));
+        }
+    }
+
+}
+```
+
+
+
+在resources/META-INFO/dubbo/ 创建com.alibaba.dubbo.rpc.Filter文件，内容如下
+
+```
+consumerFiltter=com.lvmama.fintech.funds.process.biz.common.ConsumerFiltter
+providerFiltter=com.lvmama.fintech.funds.process.biz.common.ProviderFiltter
+```
 
 
 
@@ -1616,7 +2208,7 @@ public class EmployeeTest {
 <br/>
 @FunctionalInterface注释的约束：
 
-1、接口有且只能有个一个抽象方法，只有方法定义，没有方法体
+1、接口**有且只能有一个**抽象方法，只有方法定义，没有方法体
 
 2、在接口中覆写Object类中的public方法，不算是函数式接口的方法。
 
@@ -1713,6 +2305,144 @@ default Predicate<T> or(Predicate<? super T> other) {
 
 
     此外，java8针对原生类型int，long，double都提供了相应的函数式接口。如：DoubleConsumer， DoubleFunction，IntConsumer等等，使用方式都相同，见java.util.function包。
+
+
+
+### 4.示例
+
+```java
+public class Wrapper<T> {
+    public T t;
+
+    public T getT() {
+        return t;
+    }
+
+    public void setT(T t) {
+        this.t = t;
+    }
+}
+
+
+
+============
+public class FunctionInterfaceTest {
+
+    @FunctionalInterface
+    public interface Service<T>{
+        Wrapper<T> doInvoke();
+    }
+
+    @FunctionalInterface
+    public interface WrapService<T>{
+        Wrapper<T> wrap(T t);
+    }
+
+    public static <T> T invoke(Service<T> service){
+        T result = null;
+        try {
+            result = service.doInvoke().getT();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        System.out.println("result="+result);
+        return  result;
+    }
+
+
+    public static <T> Wrapper<T> wrap(WrapService<T>  service,T t){
+        Wrapper<T> wrapper = null;
+        try {
+            wrapper  = service.wrap(t);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        System.out.println("=== wrap t, return "+ wrapper+" , "+wrapper.getT());
+        return wrapper;
+    }
+
+
+    public static void main(String[] args) {
+        // 匿名实现了interface Service接口，()->{}即调用了doInvoke
+        FunctionInterfaceTest.invoke(()->{
+            Wrapper<String> wrapper = new Wrapper<>();
+            wrapper.setT("success");
+            return wrapper;
+        });
+
+        String s = "hello";
+        FunctionInterfaceTest.wrap((String param)->{
+            Wrapper<String> wrapper = new Wrapper<>();
+            wrapper.setT(s);
+            return wrapper;
+        },s);
+
+        // 
+        FunctionInterfaceTest.wrap((String param)->{
+            Wrapper<String> wrapper = new Wrapper<>();
+            wrapper.setT(param);
+            return wrapper;
+        },"hi");
+
+         Wrapper<String> wrap = FunctionInterfaceTest.wrap((String param) -> {
+            Wrapper<String> wrapper = new Wrapper<>();
+            wrapper.setT(param);
+            return wrapper;
+        }, "hi");
+
+        System.out.println("=== got wrapper "+ wrap+" "+wrap.getT());
+    }
+}	
+
+result=success
+=== wrap t, return com.test.functionalInterface.pack.Wrapper@7a4f0f29 , hello
+=== wrap t, return com.test.functionalInterface.pack.Wrapper@2077d4de , hi
+
+=== wrap t, return com.test.functionalInterface.pack.Wrapper@77a567e1 , hi
+=== got wrapper com.test.functionalInterface.pack.Wrapper@77a567e1 hi
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -2118,6 +2848,174 @@ socket.getLocalAddress().getHostAddress();
 
 ##  Kafka、RabbitMQ、RocketMQ
 
+高可用性问题   消息重复消费问题   消息消费可靠性问题（消息丢失问题） 如何保证消息的顺序性？
+
+- 如何解决消息队列的延时以及过期失效问题？消息队列满了以后该怎么处理？有几百万消息持续积压几小时，说说怎么解决？
+
+
+
+### 为什么使用消息队列
+
+其实就是问问你消息队列都有哪些使用场景，然后你项目里具体是什么场景，说说你在这个场景里用消息队列是什么？
+
+面试官问你这个问题，**期望的一个回答**是说，你们公司有个什么**业务场景**，这个业务场景有个什么技术挑战，如果不用 MQ 可能会很麻烦，但是你现在用了 MQ 之后带给了你很多的好处。
+
+先说一下消息队列常见的使用场景吧，其实场景有很多，但是比较核心的有 3 个：**解耦**、**异步**、**削峰**。
+
+#### 解耦
+
+看这么个场景。A 系统发送数据到 BCD 三个系统，通过接口调用发送。如果 E 系统也要这个数据呢？那如果 C 系统现在不需要了呢？A 系统负责人几乎崩溃......
+
+![mq-1](picture/myP/mq-1.png)
+
+
+
+在这个场景中，A 系统跟其它各种乱七八糟的系统严重耦合，A 系统产生一条比较关键的数据，很多系统都需要 A 系统将这个数据发送过来。A 系统要时时刻刻考虑 BCDE 四个系统如果挂了该咋办？要不要重发，要不要把消息存起来？头发都白了啊！
+
+如果使用 MQ，A 系统产生一条数据，发送到 MQ 里面去，哪个系统需要数据自己去 MQ 里面消费。如果新系统需要数据，直接从 MQ 里消费即可；如果某个系统不需要这条数据了，就取消对 MQ 消息的消费即可。这样下来，A 系统压根儿不需要去考虑要给谁发送数据，不需要维护这个代码，也不需要考虑人家是否调用成功、失败超时等情况。
+
+![mq-2](picture/myP/mq-2.png)
+
+**总结**：通过一个 MQ，Pub/Sub 发布订阅消息这么一个模型，A 系统就跟其它系统彻底解耦了。
+
+**面试技巧**：你需要去考虑一下你负责的系统中是否有类似的场景，就是一个系统或者一个模块，调用了多个系统或者模块，互相之间的调用很复杂，维护起来很麻烦。但是其实这个调用是不需要直接同步调用接口的，如果用 MQ 给它异步化解耦，也是可以的，你就需要去考虑在你的项目里，是不是可以运用这个 MQ 去进行系统的解耦。在简历中体现出来这块东西，用 MQ 作解耦。
+
+#### 异步
+
+再来看一个场景，A 系统接收一个请求，需要在自己本地写库，还需要在 BCD 三个系统写库，自己本地写库要 3ms，BCD 三个系统分别写库要 300ms、450ms、200ms。最终请求总延时是 3 + 300 + 450 + 200 = 953ms，接近 1s，用户感觉搞个什么东西，慢死了慢死了。用户通过浏览器发起请求，等待个 1s，这几乎是不可接受的。
+
+
+
+![mq-3](picture/myP/mq-3.png)
+
+
+
+
+
+一般互联网类的企业，对于用户直接的操作，一般要求是每个请求都必须在 200 ms 以内完成，对用户几乎是无感知的。
+
+如果**使用 MQ**，那么 A 系统连续发送 3 条消息到 MQ 队列中，假如耗时 5ms，A 系统从接受一个请求到返回响应给用户，总时长是 3 + 5 = 8ms，对于用户而言，其实感觉上就是点个按钮，8ms 以后就直接返回了，爽！网站做得真好，真快！
+
+![mq-4](picture/myP/mq-4.png)
+
+#### 削峰
+
+每天 0:00 到 12:00，A 系统风平浪静，每秒并发请求数量就 50 个。结果每次一到 12:00 ~ 13:00 ，每秒并发请求数量突然会暴增到 5k+ 条。但是系统是直接基于 MySQL 的，大量的请求涌入 MySQL，每秒钟对 MySQL 执行约 5k 条 SQL。
+
+一般的 MySQL，扛到每秒 2k 个请求就差不多了，如果每秒请求到 5k 的话，可能就直接把 MySQL 给打死了，导致系统崩溃，用户也就没法再使用系统了。
+
+但是高峰期一过，到了下午的时候，就成了低峰期，可能也就 1w 的用户同时在网站上操作，每秒中的请求数量可能也就 50 个请求，对整个系统几乎没有任何的压力。
+
+![mq-5](picture/myP/mq-5.png)
+
+
+
+如果使用 MQ，每秒 5k 个请求写入 MQ，A 系统每秒钟最多处理 2k 个请求，因为 MySQL 每秒钟最多处理 2k 个。A 系统从 MQ 中慢慢拉取请求，每秒钟就拉取 2k 个请求，不要超过自己每秒能处理的最大请求数量就 ok，这样下来，哪怕是高峰期的时候，A 系统也绝对不会挂掉。而 MQ 每秒钟 5k 个请求进来，就 2k 个请求出去，结果就导致在中午高峰期（1 个小时），可能有几十万甚至几百万的请求积压在 MQ 中。
+
+![mq-6](picture/myP/mq-6.png)
+
+这个短暂的高峰期积压是 ok 的，因为高峰期过了之后，每秒钟就 50 个请求进 MQ，但是 A 系统依然会按照每秒 2k 个请求的速度在处理。所以说，只要高峰期一过，A 系统就会快速将积压的消息给解决掉。
+
+
+
+### 消息队列有什么优缺点
+
+优点上面已经说了，就是**在特殊场景下有其对应的好处**，**解耦**、**异步**、**削峰**。
+
+缺点有以下几个：
+
+- 系统可用性降低
+  系统引入的外部依赖越多，越容易挂掉。本来你就是 A 系统调用 BCD 三个系统的接口就好了，人 ABCD 四个系统好好的，没啥问题，你偏加个 MQ 进来，万一 MQ 挂了咋整，MQ 一挂，整套系统崩溃的，你不就完了？如何保证消息队列的高可用，可以[点击这里查看](https://github.com/doocs/advanced-java/blob/master/docs/high-concurrency/how-to-ensure-high-availability-of-message-queues.md)。
+- 系统复杂度提高
+  硬生生加个 MQ 进来，你怎么[保证消息没有重复消费](https://github.com/doocs/advanced-java/blob/master/docs/high-concurrency/how-to-ensure-that-messages-are-not-repeatedly-consumed.md)？怎么[处理消息丢失的情况](https://github.com/doocs/advanced-java/blob/master/docs/high-concurrency/how-to-ensure-the-reliable-transmission-of-messages.md)？怎么保证消息传递的顺序性？头大头大，问题一大堆，痛苦不已。
+- 一致性问题
+  A 系统处理完了直接返回成功了，人都以为你这个请求就成功了；但是问题是，要是 BCD 三个系统那里，BD 两个系统写库成功了，结果 C 系统写库失败了，咋整？你这数据就不一致了。
+
+所以消息队列实际是一种非常复杂的架构，你引入它有很多好处，但是也得针对它带来的坏处做各种额外的技术方案和架构来规避掉，做好之后，你会发现，妈呀，系统复杂度提升了一个数量级，也许是复杂了 10 倍。但是关键时刻，用，还是得用的。
+
+
+
+### Kafka、ActiveMQ、RabbitMQ、RocketMQ 有什么优缺点？
+
+| 特性                     | ActiveMQ                              | RabbitMQ                                           | RocketMQ                                                     | Kafka                                                        |
+| ------------------------ | ------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| 单机吞吐量               | 万级，比 RocketMQ、Kafka 低一个数量级 | 同 ActiveMQ                                        | 10 万级，支撑高吞吐                                          | 10 万级，高吞吐，一般配合大数据类的系统来进行实时数据计算、日志采集等场景 |
+| topic 数量对吞吐量的影响 |                                       |                                                    | topic 可以达到几百/几千的级别，吞吐量会有较小幅度的下降，这是 RocketMQ 的一大优势，在同等机器下，可以支撑大量的 topic | topic 从几十到几百个时候，吞吐量会大幅度下降，在同等机器下，Kafka 尽量保证 topic 数量不要过多，如果要支撑大规模的 topic，需要增加更多的机器资源 |
+| 时效性                   | ms 级                                 | 微秒级，这是 RabbitMQ 的一大特点，延迟最低         | ms 级                                                        | 延迟在 ms 级以内                                             |
+| 可用性                   | 高，基于主从架构实现高可用            | 同 ActiveMQ                                        | 非常高，分布式架构                                           | 非常高，分布式，一个数据多个副本，少数机器宕机，不会丢失数据，不会导致不可用 |
+| 消息可靠性               | 有较低的概率丢失数据                  | 基本不丢                                           | 经过参数优化配置，可以做到 0 丢失                            | 同 RocketMQ                                                  |
+| 功能支持                 | MQ 领域的功能极其完备                 | 基于 erlang 开发，并发能力很强，性能极好，延时很低 | MQ 功能较为完善，还是分布式的，扩展性好                      | 功能较为简单，主要支持简单的 MQ 功能，在大数据领域的实时计算以及日志采集被大规模使用 |
+
+综上，各种对比之后，有如下建议：
+
+一般的业务系统要引入 MQ，最早大家都用 ActiveMQ，但是现在确实大家用的不多了，没经过大规模吞吐量场景的验证，社区也不是很活跃，所以大家还是算了吧，我个人不推荐用这个了；
+
+后来大家开始用 RabbitMQ，但是确实 erlang 语言阻止了大量的 Java 工程师去深入研究和掌控它，对公司而言，几乎处于不可控的状态，但是确实人家是开源的，比较稳定的支持，活跃度也高；
+
+不过现在确实越来越多的公司会去用 RocketMQ，确实很不错，毕竟是阿里出品，但社区可能有突然黄掉的风险（目前 RocketMQ 已捐给 [Apache](https://github.com/apache/rocketmq)，但 GitHub 上的活跃度其实不算高）对自己公司技术实力有绝对自信的，推荐用 RocketMQ，否则回去老老实实用 RabbitMQ 吧，人家有活跃的开源社区，绝对不会黄。
+
+所以**中小型公司**，技术实力较为一般，技术挑战不是特别高，用 RabbitMQ 是不错的选择；**大型公司**，基础架构研发实力较强，用 RocketMQ 是很好的选择。
+
+如果是**大数据领域**的实时计算、日志采集等场景，用 Kafka 是业内标准的，绝对没问题，社区活跃度很高，绝对不会黄，何况几乎是全世界这个领域的事实性规范。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ### 1 Kafka、RabbitMQ、RocketMQ比较
 
 #### 1. 流派1：有Broker的暴力路由
@@ -2266,6 +3164,425 @@ ZeroMQ代表的是第三种MQ。说白了，他是**不需要在服务器上部�
 #### 6.最后的思考acks=all 就可以代表数据一定不会丢失了吗？
 
 ==当然不是==，如果你的Partition**只有一个副本，也就是一个Leader，任何Follower都没有**，你认为acks=all有用吗？当然没用了，因为ISR里就一个Leader，他接收完消息后宕机，也会导致数据丢失。所以说，**这个acks=all，必须跟ISR列表里至少有2个以上的副本配合使用，起码是有一个Leader和一个Follower才可以**。这样才能保证说写一条数据过去，一定是2个以上的副本都收到了才算是成功，此时任何一个副本宕机，不会导致数据丢失。
+
+
+
+### kafka如何保证消息不被重复消费/如何保证消息消费的幂等性
+
+RabbitMQ、RocketMQ、Kafka，都有可能会出现消息重复消费的问题，正常。因为这问题通常不是 MQ 自己保证的，是由我们开发来保证的。
+
+Kafka 实际上有个 offset 的概念，就是每个消息写进去，都有一个 offset，代表消息的序号，然后 consumer 消费了数据之后，**每隔一段时间**（定时定期），会把自己消费过的消息的 offset 提交一下，表示“我已经消费过了，下次我要是重启啥的，你就让我继续从上次消费到的 offset 来继续消费吧”。
+
+但是凡事总有意外，比如我们之前生产经常遇到的，就是你有时候重启系统，看你怎么重启了，如果碰到点着急的，直接 kill 进程了，再重启。这会导致 consumer 有些消息处理了，但是没来得及提交 offset，尴尬了。重启之后，少数消息会再次消费一次。
+
+举个栗子。
+
+有这么个场景。数据 1/2/3 依次进入 kafka，kafka 会给这三条数据每条分配一个 offset，代表这条数据的序号，我们就假设分配的 offset 依次是 152/153/154。消费者从 kafka 去消费的时候，也是按照这个顺序去消费。假如当消费者消费了 `offset=153` 的这条数据，刚准备去提交 offset 到 zookeeper，此时消费者进程被重启了。那么此时消费过的数据 1/2 的 offset 并没有提交，kafka 也就不知道你已经消费了 `offset=153` 这条数据。那么重启之后，消费者会找 kafka 说，嘿，哥儿们，你给我接着把上次我消费到的那个地方后面的数据继续给我传递过来。由于之前的 offset 没有提交成功，那么数据 1/2 会再次传过来，如果此时消费者没有去重的话，那么就会导致重复消费。
+
+![mq-10](picture/myP/mq-10.png)
+
+如果消费者干的事儿是拿一条数据就往数据库里写一条，会导致说，你可能就把数据 1/2 在数据库里插入了 2 次，那么数据就错啦。
+
+其实重复消费不可怕，可怕的是你没考虑到重复消费之后，**怎么保证幂等性**。
+
+举个例子吧。假设你有个系统，消费一条消息就往数据库里插入一条数据，要是你一个消息重复两次，你不就插入了两条，这数据不就错了？但是你要是消费到第二次的时候，自己判断一下是否已经消费过了，若是就直接扔了，这样不就保留了一条数据，从而保证了数据的正确性。
+
+一条数据重复出现两次，数据库里就只有一条数据，这就保证了系统的幂等性。
+
+幂等性，通俗点说，就一个数据，或者一个请求，给你重复来多次，你得确保对应的数据是不会改变的，**不能出错**。
+
+所以第二个问题来了，**怎么保证消息队列消费的幂等性**？
+
+其实还是得结合业务来思考，我这里给几个思路：
+
+- 比如你拿个数据要写库，你先根据主键查一下，如果这数据都有了，你就别插入了，update 一下好吧。
+- 比如你是写 Redis，那没问题了，反正每次都是 set，天然幂等性。
+- 比如你不是上面两个场景，那做的稍微复杂一点，你需要让生产者发送每条数据的时候，里面加一个全局唯一的 id，类似订单 id 之类的东西，然后你这里消费到了之后，先根据这个 id 去比如 Redis 里查一下，之前消费过吗？如果没有消费过，你就处理，然后这个 id 写 Redis。如果消费过了，那你就别处理了，保证别重复处理相同的消息即可。
+- 比如基于数据库的唯一键来保证重复数据不会重复插入多条。因为有唯一键约束了，重复数据插入只会报错，不会导致数据库中出现脏数据。
+
+![mq-11](picture/myP/mq-11.png)
+
+当然，如何保证 MQ 的消费是幂等性的，需要结合具体的业务来看。
+
+
+
+### Kafka 的高可用性
+
+Kafka 一个最基本的架构认识：由多个 broker 组成，每个 broker 是一个节点；你创建一个 topic，这个 topic 可以划分为多个 partition，每个 partition 可以存在于不同的 broker 上，每个 partition 就放一部分数据。
+
+这就是**天然的分布式消息队列**，就是说一个 topic 的数据，是**分散放在多个机器上的，每个机器就放一部分数据**。
+
+实际上 RabbmitMQ 之类的，并不是分布式消息队列，它就是传统的消息队列，只不过提供了一些集群、HA(High Availability, 高可用性) 的机制而已，因为无论怎么玩儿，RabbitMQ 一个 queue 的数据都是放在一个节点里的，镜像集群下，也是每个节点都放这个 queue 的完整数据。
+
+Kafka 0.8 以前，是没有 HA 机制的，就是任何一个 broker 宕机了，那个 broker 上的 partition 就废了，没法写也没法读，没有什么高可用性可言。
+
+比如说，我们假设创建了一个 topic，指定其 partition 数量是 3 个，分别在三台机器上。但是，如果第二台机器宕机了，会导致这个 topic 的 1/3 的数据就丢了，因此这个是做不到高可用的。
+
+![kafka-before](picture/myP/kafka-before.png)
+
+Kafka 0.8 以后，提供了 HA 机制，就是 replica（复制品） 副本机制。每个 partition 的数据都会同步到其它机器上，形成自己的多个 replica 副本。所有 replica 会选举一个 leader 出来，那么生产和消费都跟这个 leader 打交道，然后其他 replica 就是 follower。写的时候，leader 会负责把数据同步到所有 follower 上去，读的时候就直接读 leader 上的数据即可。只能读写 leader？很简单，**要是你可以随意读写每个 follower，那么就要 care 数据一致性的问题**，系统复杂度太高，很容易出问题。Kafka 会均匀地将一个 partition 的所有 replica 分布在不同的机器上，这样才可以提高容错性。
+
+![kafka-after](picture/myP/kafka-after.png)
+
+这么搞，就有所谓的**高可用性**了，因为如果某个 broker 宕机了，没事儿，那个 broker上面的 partition 在其他机器上都有副本的。如果这个宕机的 broker 上面有某个 partition 的 leader，那么此时会从 follower 中**重新选举**一个新的 leader 出来，大家继续读写那个新的 leader 即可。这就有所谓的高可用性了。
+
+**写数据**的时候，生产者就写 leader，然后 leader 将数据落地写本地磁盘，接着其他 follower 自己主动从 leader 来 pull 数据。一旦所有 follower 同步好数据了，就会发送 ack 给 leader，leader 收到所有 follower 的 ack 之后，就会返回写成功的消息给生产者。（当然，这只是其中一种模式，还可以适当调整这个行为）
+
+**消费**的时候，只会从 leader 去读，但是只有当一个消息已经被所有 follower 都同步成功返回 ack 的时候，这个消息才会被消费者读到。
+
+
+
+
+
+### kafka如何保证消息的可靠性传输？（如何处理消息丢失的问题）
+
+#### 消费端弄丢了数据
+
+唯一可能导致消费者弄丢数据的情况，就是说，你消费到了这个消息，然后消费者那边**自动提交了 offset**，让 Kafka 以为你已经消费好了这个消息，但其实你才刚准备处理这个消息，你还没处理，你自己就挂了，此时这条消息就丢咯。
+
+这不是跟 RabbitMQ 差不多吗，大家都知道 Kafka 会自动提交 offset，那么只要**关闭自动提交** offset，在处理完之后自己手动提交 offset，就可以保证数据不会丢。但是此时确实还是**可能会有重复消费**，比如你刚处理完，还没提交 offset，结果自己挂了，此时肯定会重复消费一次，自己保证幂等性就好了。
+
+生产环境碰到的一个问题，就是说我们的 Kafka 消费者消费到了数据之后是写到一个内存的 queue 里先缓冲一下，结果有的时候，你刚把消息写入内存 queue，然后消费者会自动提交 offset。然后此时我们重启了系统，就会导致内存 queue 里还没来得及处理的数据就丢失了。
+
+
+
+#### Kafka 弄丢了数据
+
+这块比较常见的一个场景，就是 Kafka 某个 broker 宕机，然后重新选举 partition 的 leader。大家想想，要是此时其他的 follower 刚好还有些数据没有同步，结果此时 leader 挂了，然后选举某个 follower 成 leader 之后，不就少了一些数据？这就丢了一些数据啊。
+
+生产环境也遇到过，我们也是，之前 Kafka 的 leader 机器宕机了，将 follower 切换为 leader 之后，就会发现说这个数据就丢了。
+
+所以此时一般是要求起码设置如下 4 个参数：
+
+- 给 topic 设置 `replication.factor` 参数：这个值必须大于 1，要求每个 partition 必须有至少 2 个副本。
+- 在 Kafka 服务端设置 `min.insync.replicas` 参数：这个值必须大于 1，这个是要求一个 leader 至少感知到有至少一个 follower 还跟自己保持联系，没掉队，这样才能确保 leader 挂了还有一个 follower 吧。
+- 在 producer 端设置 `acks=all`：这个是要求每条数据，必须是**写入所有 replica 之后，才能认为是写成功了**。
+- 在 producer 端设置 `retries=MAX`（很大很大很大的一个值，无限次重试的意思）：这个是**要求一旦写入失败，就无限重试**，卡在这里了。
+
+我们生产环境就是按照上述要求配置的，这样配置之后，至少在 Kafka broker 端就可以保证在 leader 所在 broker 发生故障，进行 leader 切换时，数据不会丢失。
+
+
+
+#### 生产者会不会弄丢数据？
+
+如果按照上述的思路设置了 `acks=all`，一定不会丢，要求是，你的 leader 接收到消息，所有的 follower 都同步到了消息之后，才认为本次写成功了。如果没满足这个条件，生产者会自动不断的重试，重试无限次。
+
+
+
+### kafka 如何保证消息的顺序性？
+
+先看看顺序会错乱的俩场景：
+
+- **Kafka**：比如说我们建了一个 topic，有三个 partition。生产者在写的时候，其实可以指定一个 key，比如说我们指定了某个订单 id 作为 key，那么这个订单相关的数据，一定会被分发到同一个 partition 中去，而且这个 partition 中的数据一定是有顺序的。
+  消费者从 partition 中取出来数据的时候，也一定是有顺序的。到这里，顺序还是 ok 的，没有错乱。接着，我们在消费者里可能会搞**多个线程来并发处理消息**。因为如果消费者是单线程消费处理，而处理比较耗时的话，比如处理一条消息耗时几十 ms，那么 1 秒钟只能处理几十条消息，这吞吐量太低了。而多个线程并发跑的话，顺序可能就乱掉了。
+
+![kafka-order-01](picture/myP/kafka-order-01.png)
+
+解决方案
+
+
+
+Kafka
+
+- 一个 topic，一个 partition，一个 consumer，内部单线程消费，单线程吞吐量太低，一般不会用这个。
+- 写 N 个内存 queue，具有相同 key 的数据都到同一个内存 queue；然后对于 N 个线程，每个线程分别消费一个内存 queue 即可，这样就能保证顺序性。
+
+![kafka-order-02](picture/myP/kafka-order-02.png)
+
+
+
+
+
+## RabbitMQ
+
+
+
+
+
+### RabbitMQ 的高可用性
+
+RabbitMQ 是比较有代表性的，因为是**基于主从**（非分布式）做高可用性的，我们就以 RabbitMQ 为例子讲解第一种 MQ 的高可用性怎么实现。
+
+RabbitMQ 有三种模式：单机模式、普通集群模式、镜像集群模式。
+
+#### 单机模式
+
+单机模式，就是 Demo 级别的，一般就是你本地启动了玩玩儿的，没人生产用单机模式。
+
+#### 普通集群模式（无高可用性）
+
+普通集群模式，意思就是在多台机器上启动多个 RabbitMQ 实例，每个机器启动一个。你**创建的 queue，只会放在一个 RabbitMQ 实例上**，但是每个实例都同步 queue 的元数据（元数据可以认为是 queue 的一些配置信息，通过元数据，可以找到 queue 所在实例）。你消费的时候，实际上如果连接到了另外一个实例，那么那个实例会从 queue 所在实例上拉取数据过来。
+
+![mq-7](picture/myP/mq-7.png)
+
+这种方式确实很麻烦，也不怎么好，**没做到所谓的分布式**，就是个普通集群。因为这导致你要么消费者每次随机连接一个实例然后拉取数据，要么固定连接那个 queue 所在实例消费数据，前者有**数据拉取的开销**，后者导致**单实例性能瓶颈**。
+
+而且如果那个放 queue 的实例宕机了，会导致接下来其他实例就无法从那个实例拉取，如果你**开启了消息持久化**，让 RabbitMQ 落地存储消息的话，**消息不一定会丢**，得等这个实例恢复了，然后才可以继续从这个 queue 拉取数据。
+
+所以这个事儿就比较尴尬了，这就**没有什么所谓的高可用性**，**这方案主要是提高吞吐量的**，就是说让集群中多个节点来服务某个 queue 的读写操作。
+
+
+
+#### 镜像集群模式（高可用性）
+
+这种模式，才是所谓的 RabbitMQ 的高可用模式。跟普通集群模式不一样的是，在镜像集群模式下，你创建的 queue，无论元数据还是 queue 里的消息都会**存在于多个实例上**，就是说，每个 RabbitMQ 节点都有这个 queue 的一个**完整镜像**，包含 queue 的全部数据的意思。然后每次你写消息到 queue 的时候，都会自动把**消息同步**到多个实例的 queue 上。
+
+![mq-8](picture/myP/mq-8.png)
+
+那么**如何开启这个镜像集群模式**呢？其实很简单，RabbitMQ 有很好的管理控制台，就是在后台新增一个策略，这个策略是**镜像集群模式的策略**，指定的时候是可以要求数据同步到所有节点的，也可以要求同步到指定数量的节点，再次创建 queue 的时候，应用这个策略，就会自动将数据同步到其他的节点上去了。
+
+这样的话，好处在于，你任何一个机器宕机了，没事儿，其它机器（节点）还包含了这个 queue 的完整数据，别的 consumer 都可以到其它节点上去消费数据。坏处在于，第一，这个性能开销也太大了吧，消息需要同步到所有机器上，导致网络带宽压力和消耗很重！第二，这么玩儿，不是分布式的，就**没有扩展性可言**了，如果某个 queue 负载很重，你加机器，新增的机器也包含了这个 queue 的所有数据，并**没有办法线性扩展**你的 queue。你想，如果这个 queue 的数据量很大，大到这个机器上的容量无法容纳了，此时该怎么办呢？
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### RabbitMQ 如何保证消息的可靠性传输？（如何处理消息丢失的问题）
+
+数据的丢失问题，可能出现在生产者、MQ、消费者中，咱们从 RabbitMQ 和 Kafka 分别来分析一下吧。
+
+![rabbitmq-message-lose](picture/myP/rabbitmq-message-lose.png)
+
+
+
+#### 生产者弄丢了数据
+
+生产者将数据发送到 RabbitMQ 的时候，可能数据就在半路给搞丢了，因为网络问题啥的，都有可能。
+
+此时可以选择用 RabbitMQ 提供的事务功能，就是生产者**发送数据之前**开启 RabbitMQ 事务`channel.txSelect`，然后发送消息，如果消息没有成功被 RabbitMQ 接收到，那么生产者会收到异常报错，此时就可以回滚事务`channel.txRollback`，然后重试发送消息；如果收到了消息，那么可以提交事务`channel.txCommit`。
+
+```java
+// 开启事务
+channel.txSelect
+try {
+    // 这里发送消息
+} catch (Exception e) {
+    channel.txRollback
+
+    // 这里再次重发这条消息
+}
+
+// 提交事务
+channel.txCommit
+```
+
+但是问题是，RabbitMQ 事务机制（同步）一搞，基本上**吞吐量会下来，因为太耗性能**。
+
+所以一般来说，如果你要确保说写 RabbitMQ 的消息别丢，可以开启 `confirm` 模式，在生产者那里设置开启 `confirm` 模式之后，你每次写的消息都会**分配一个唯一的 id**，然后如果写入了 RabbitMQ 中，RabbitMQ 会给你回传一个 `ack` 消息，告诉你说这个消息 ok 了。如果 RabbitMQ 没能处理这个消息，会回调你的一个 `nack` 接口，告诉你这个消息接收失败，你可以重试。而且你可以结合这个机制自己在内存里维护每个消息 id 的状态，如果超过一定时间还没接收到这个消息的回调，那么你可以重发。
+
+事务机制和 `confirm` 机制最大的不同在于，**事务机制是同步的**，你提交一个事务之后会**阻塞**在那儿，但是 `confirm` 机制是**异步**的，你发送个消息之后就可以发送下一个消息，然后那个消息 RabbitMQ 接收了之后会异步回调你的一个接口通知你这个消息接收到了。
+
+所以一般在生产者这块**避免数据丢失**，都是用 `confirm` 机制的。
+
+
+
+#### RabbitMQ 弄丢了数据
+
+就是 RabbitMQ 自己弄丢了数据，这个你必须**开启 RabbitMQ 的持久化**，就是消息写入之后会持久化到磁盘，哪怕是 RabbitMQ 自己挂了，**恢复之后会自动读取之前存储的数据**，一般数据不会丢。除非极其罕见的是，RabbitMQ 还没持久化，自己就挂了，**可能导致少量数据丢失**，但是这个概率较小。
+
+设置持久化有**两个步骤**：
+
+- 创建 queue 的时候将其设置为持久化
+  这样就可以保证 RabbitMQ **持久化 queue 的元数据**，但是它是**不会持久化 queue 里的数据**的。
+- 第二个是发送消息的时候将消息的 `deliveryMode` 设置为 2
+  就是将**消息设置为持久化**的，此时 RabbitMQ 就会将消息持久化到磁盘上去。
+
+**必须要同时设置这两个持久化才行**，RabbitMQ 哪怕是挂了，再次重启，也会从磁盘上重启恢复 queue，恢复这个 queue 里的数据。
+
+注意，哪怕是你给 RabbitMQ 开启了持久化机制，也有一种可能，就是这个消息写到了 RabbitMQ 中，但是还没来得及持久化到磁盘上，结果不巧，此时 RabbitMQ 挂了，就会导致内存里的一点点数据丢失。
+
+所以，持久化可以跟生产者那边的 `confirm` 机制配合起来，只有消息被持久化到磁盘之后，才会通知生产者 `ack` 了，所以哪怕是在持久化到磁盘之前，RabbitMQ 挂了，数据丢了，生产者收不到 `ack`，你也是可以自己重发的。
+
+
+
+#### 消费端弄丢了数据
+
+RabbitMQ 如果丢失了数据，主要是因为你消费的时候，**刚消费到，还没处理，结果进程挂了**，比如重启了，那么就尴尬了，RabbitMQ 认为你都消费了，这数据就丢了。
+
+这个时候得用 RabbitMQ 提供的 `ack` 机制，简单来说，就是你**必须关闭 RabbitMQ 的自动** `ack`，可以通过一个 api 来调用就行，然后每次你自己代码里确保处理完的时候，再在程序里 `ack` 一把。这样的话，如果你还没处理完，不就没有 `ack`了？那 RabbitMQ 就认为你还没处理完，这个时候 RabbitMQ 会把这个消费**分配给别的 consumer 去处理**，消息是不会丢的。
+
+
+
+![rabbitmq-message-lose-solution](picture/myP/rabbitmq-message-lose-solution.png)
+
+
+
+### RabbitMQ 如何保证消息的顺序性？
+
+
+
+先看看顺序会错乱的俩场景：
+
+- **RabbitMQ**：一个 queue，多个 consumer。比如，生产者向 RabbitMQ 里发送了三条数据，顺序依次是 data1/data2/data3，压入的是 RabbitMQ 的一个内存队列。有三个消费者分别从 MQ 中消费这三条数据中的一条，结果消费者2先执行完操作，把 data2 存入数据库，然后是 data1/data3。这不明显乱了。
+
+![rabbitmq-order-01](picture/myP/rabbitmq-order-01.png)
+
+解决方案
+
+RabbitMQ
+
+拆分多个 queue，每个 queue 一个 consumer，就是多一些 queue 而已，确实是麻烦点；或者就一个 queue 但是对应一个 consumer，然后这个 consumer 内部用内存队列做排队，然后分发给底层不同的 worker 来处理。
+
+![rabbitmq-order-02](picture/myP/rabbitmq-order-02.png)
+
+
+
+### RabbitMQ confirm
+
+
+
+Confirm发送方确认模式使用和事务类似，也是通过设置Channel进行发送方确认的。
+
+**Confirm的三种实现方式：**
+
+方式一：channel.waitForConfirms()普通发送方确认模式；
+
+方式二：channel.waitForConfirmsOrDie()批量确认模式；
+
+方式三：channel.addConfirmListener()异步监听发送方确认模式；
+
+
+
+#### 方式一：普通Confirm模式
+
+```java
+// 创建连接
+ConnectionFactory factory = new ConnectionFactory();
+factory.setUsername(config.UserName);
+factory.setPassword(config.Password);
+factory.setVirtualHost(config.VHost);
+factory.setHost(config.Host);
+factory.setPort(config.Port);
+Connection conn = factory.newConnection();
+// 创建信道
+Channel channel = conn.createChannel();
+// 声明队列
+channel.queueDeclare(config.QueueName, false, false, false, null);
+// 开启发送方确认模式
+channel.confirmSelect();
+String message = String.format("时间 => %s", new Date().getTime());
+channel.basicPublish("", config.QueueName, null, message.getBytes("UTF-8"));
+if (channel.waitForConfirms()) {
+    System.out.println("消息发送成功" );
+}
+```
+
+我们只需要在推送消息之前，channel.confirmSelect()声明开启发送方确认模式，再使用channel.waitForConfirms()等待消息被服务器确认即可。
+
+
+
+### 方式二：批量Confirm模式
+
+```java
+// 创建连接
+ConnectionFactory factory = new ConnectionFactory();
+factory.setUsername(config.UserName);
+factory.setPassword(config.Password);
+factory.setVirtualHost(config.VHost);
+factory.setHost(config.Host);
+factory.setPort(config.Port);
+Connection conn = factory.newConnection();
+// 创建信道
+Channel channel = conn.createChannel();
+// 声明队列
+channel.queueDeclare(config.QueueName, false, false, false, null);
+// 开启发送方确认模式
+channel.confirmSelect();
+for (int i = 0; i < 10; i++) {
+    String message = String.format("时间 => %s", new Date().getTime());
+    channel.basicPublish("", config.QueueName, null, message.getBytes("UTF-8"));
+}
+channel.waitForConfirmsOrDie(); //直到所有信息都发布，只要有一个未确认就会IOException
+System.out.println("全部执行完成");
+```
+
+channel.waitForConfirmsOrDie()，使用同步方式等所有的消息发送之后才会执行后面代码，只要有一个消息未被确认就会抛出IOException异常。
+
+
+
+### 方式三：异步Confirm模式
+
+```java
+// 创建连接
+ConnectionFactory factory = new ConnectionFactory();
+factory.setUsername(config.UserName);
+factory.setPassword(config.Password);
+factory.setVirtualHost(config.VHost);
+factory.setHost(config.Host);
+factory.setPort(config.Port);
+Connection conn = factory.newConnection();
+// 创建信道
+Channel channel = conn.createChannel();
+// 声明队列
+channel.queueDeclare(config.QueueName, false, false, false, null);
+// 开启发送方确认模式
+channel.confirmSelect();
+for (int i = 0; i < 10; i++) {
+    String message = String.format("时间 => %s", new Date().getTime());
+    channel.basicPublish("", config.QueueName, null, message.getBytes("UTF-8"));
+}
+//异步监听确认和未确认的消息
+channel.addConfirmListener(new ConfirmListener() {
+    @Override
+    public void handleNack(long deliveryTag, boolean multiple) throws IOException {
+        System.out.println("未确认消息，标识：" + deliveryTag);
+    }
+    @Override
+    public void handleAck(long deliveryTag, boolean multiple) throws IOException {
+        System.out.println(String.format("已确认消息，标识：%d，多个消息：%b", deliveryTag, multiple));
+    }
+});
+```
+
+步模式的优点，就是执行效率高，不需要等待消息执行完，只需要监听消息即可
+
+消息确认有可能是批量确认的，是否批量确认在于返回的multiple的参数，此参数为bool值，如果true表示批量执行了deliveryTag这个值以前的所有消息，如果为false的话表示单条确认。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -2642,9 +3959,23 @@ class GT<T>{
 
 
 
+# 😈 注解
 
+@ConfigurationProperties
 
+```java
+@ConfigurationProperties("spring.cloud.loadbalancer.retry")
+public class LoadBalancerRetryProperties {
+	private boolean enabled = true;
+	public boolean isEnabled() {
+		return this.enabled;
+	}
+	public void setEnabled(boolean enabled) {
+		this.enabled = enabled;
+	}
 
+}
+```
 
 
 
@@ -3007,6 +4338,146 @@ public void fun1(){
 
 
 
+## Spring Bean 初始化之InitializingBean, init-method 和 PostConstruct
+
+从接口的名字上不难发现，InitializingBean 的作用就是在 bean 初始化后执行定制化的操作。
+
+Spring 容器中的 Bean 是有生命周期的，Spring 允许在 Bean 在初始化完成后以及 Bean 销毁前执行特定的操作，常用的设定方式有以下三种：
+
+- 通过实现 InitializingBean/DisposableBean 接口来定制初始化之后/销毁之前的操作方法；
+- 通过 <bean> 元素的 init-method/destroy-method 属性指定初始化之后 /销毁之前调用的操作方法；
+- 在指定方法上加上@PostConstruct 或@PreDestroy注解来制定该方法是在初始化之后还是销毁之前调用。
+
+注：以下源码分析基于`spring 5.0.4`
+
+**InitializingBean vs init-method**
+
+```java
+public interface InitializingBean {
+    void afterPropertiesSet() throws Exception;
+}
+```
+
+接口只有一个方法`afterPropertiesSet`，此方法的调用入口是负责加载 spring bean 的`AbstractAutowireCapableBeanFactory`，源码如下：
+
+```java
+protected void invokeInitMethods(String beanName, final Object bean, @Nullable RootBeanDefinition mbd)throws Throwable {
+    boolean isInitializingBean = (bean instanceof InitializingBean);
+    if(isInitializingBean && (mbd == null || !mbd.isExternallyManagedInitMethod("afterPropertiesSet"))) {
+        if (logger.isDebugEnabled()) {
+            logger.debug("Invoking afterPropertiesSet() on bean with name '" + beanName + "'");
+        }
+        if (System.getSecurityManager() != null) {
+            try {
+                AccessController.doPrivileged(
+				(PrivilegedExceptionAction<Object>) () -> {
+                    ((InitializingBean) bean).afterPropertiesSet();
+                    return null;
+                }, getAccessControlContext());
+            }
+            catch (PrivilegedActionException pae) {
+                throw pae.getException();
+            }
+        }
+        else {
+            ((InitializingBean) bean).afterPropertiesSet();
+        }
+    }
+}	
+```
+
+从这段源码可以得出以下结论：
+
+1. spring为bean提供了两种初始化bean的方式，**实现InitializingBean接口**，实现afterPropertiesSet方法，或者在配置文件中通过**init-method**指定，两种方式可以**同时**使用
+2. 实现InitializingBean接口是直接调用afterPropertiesSet方法，比通过反射调用init-method指定的方法效率相对来说要高点。但是init-method方式消除了对spring的依赖
+3. 先调用afterPropertiesSet，再执行 init-method 方法，如果调用afterPropertiesSet方法时出错，则不调用init-method指定的方法。
+
+
+
+**@PostConstruct**
+
+通过 debug 和调用栈找到类`InitDestroyAnnotationBeanPostProcessor`, 其中的核心方法，即 `@PostConstruct` 方法调用的入口：
+
+```java
+@Override
+public Object postProcessBeforeInitialization(Object bean, String beanName) throws BeansException {
+    LifecycleMetadata metadata = findLifecycleMetadata(bean.getClass());
+    try {
+        metadata.invokeInitMethods(bean, beanName);
+    }
+    catch (InvocationTargetException ex) {
+        throw new BeanCreationException(beanName, "Invocation of init method failed", ex.getTargetException());
+    }
+    catch (Throwable ex) {
+        throw new BeanCreationException(beanName, "Failed to invoke init method", ex);
+    }
+    return bean;
+}
+```
+
+从命名上，我们就可以得到某些信息——这是一个BeanPostProcessor。想到了什么？在[也谈Spring容器的生命周期](http://sexycoding.iteye.com/blog/1046775)中，提到过BeanPostProcessor的postProcessBeforeInitialization是在Bean生命周期中afterPropertiesSet和init-method之前被调用的。另外通过跟踪，`@PostConstruct`方法的调用方式也是通过发射机制。
+
+
+
+#### 总结
+
+1. spring bean的初始化执行顺序：构造方法 --> `@PostConstruct`注解的方法 --> `afterPropertiesSet`方法 --> `init-method`指定的方法。具体可以参考例子
+2. `afterPropertiesSet`通过接口实现方式调用（效率上高一点），`@PostConstruct`和`init-method`都是通过反射机制调用
+3. 
+
+例子
+
+```java
+@Slf4j
+public class InitSequenceBean implements InitializingBean {
+
+    public InitSequenceBean() {
+        log.info("InitSequenceBean: construct");
+    }
+
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        log.info("InitSequenceBean: afterPropertiesSet");
+    }
+
+    @PostConstruct
+    public void postConstruct() {
+        log.info("InitSequenceBean: postConstruct");
+    }
+
+    public void initMethod() {
+        log.info("InitSequenceBean: initMethod");
+    }
+}
+
+@Configuration
+public class SystemConfig {
+
+    @Bean(initMethod = "initMethod", name = "initSequenceBean")
+    public InitSequenceBean initSequenceBean() {
+        return new InitSequenceBean();
+    }
+}
+
+@Slf4j
+public class InitSequenceBeanTest extends ApplicationTests {
+
+    @Autowired
+    private InitSequenceBean initSequenceBean;
+
+    @Test
+    public void initSequenceBeanTest() {
+        log.info("Finish: {}", initSequenceBean.toString());
+    }
+}
+```
+
+
+
+springboot 配置filter
+
+
+
 
 
 
@@ -3273,6 +4744,81 @@ public class Main {}
 
 1. 内部调用，非 public 方法上使用注解，会导致缓存无效。由于 SpringCache 是基于 Spring AOP 的动态代理实现，由于代理本身的问题，当同一个类中调用另一个方法，会导致另一个方法的缓存不能使用，这个在编码上需要注意，避免在同一个类中这样调用。如果非要这样做，可以通过再次代理调用，如 ((Category)AopContext.currentProxy()).get(category) 这样避免缓存无效。
 2. 不能支持多级缓存设置，如默认到本地缓存取数据，本地缓存没有则去远端缓存取数据，然后远程缓存取回来数据再存到本地缓存。
+
+
+
+### spring cache 注解内部方法失效
+
+
+
+失效案例：
+
+```java
+ @Cacheable(value = "payGlobalParamsControls",key = "#code",unless = "#result == null")
+    public  PayGlobalParamsControl getPayGlobalParamsControl(String code){
+       return  payGlobalParamsControlService.selectByCode(code);
+    }
+
+ public RiskCheckDTO checkRisk(RiskCheckDTO dto) {
+     // 调用cache缓存方法失效 没有起作用
+     PayGlobalParamsControl ctrl =  getPayGlobalParamsControl(LIMIT_PLATFROM_RISK);
+     String platFromLimit = ctrl == null ? riskDefaultReleaseCode : ctrl.getValue();
+ ......
+ }
+
+
+========================================
+    
+@CacheEvict(value = "groupUserCached", key = "'user_status_' + #userId")
+    public void removeGroupUserStatusCached(long userId) {
+        logger.info("removeGroupUserStatusCached, userId is {}", userId);
+    }
+
+    /**
+     * 支付成功新客变老客
+     * @param userId
+     */
+    public void updateUserStatusToOld(Long userId){
+        GroupUserDO groupUserDO = new GroupUserDO();
+        groupUserDO.setUserId(userId);
+        groupUserDO.setStatus(GroupUserStatus.OLD_USER.getStatus());
+        int result = groupUserDao.updateStatusByUserId(groupUserDO);
+        if(result > 0){
+            this.unLockGroupUser(userId);
+            this.removeGroupUserStatusCached(userId);
+            logger.info("【新客变老客】会员状态更新成功, userId：{}", userId);
+        }else{
+            logger.info("【新客变老客】会员状态更新失败, userId：{}", userId);
+        }
+    }
+方法updateUserStatusToOld调用了注解方法removeGroupUserStatusCached，但是方法removeGroupUserStatusCached没有生效
+```
+
+
+
+spring cache的实现原理跟spring的事物管理类似，都是**基于AOP的动态代理实现的**：即都在方法调用前后
+去获取方法的名称、参数、返回值，然后根据方法名称、参数生成缓存的key(自定义的key例外)，进行缓存。
+
+当调用代理的方法时,代理可以整体控制实际的方法的入参和返回值。比如缓存结果**,直接跳过**执行实际的方法等。
+
+
+
+内部直接调用注解方法，**如果是在同一个类的内部直接调用的话，调用的是this.注解的内部方法，其中this是当前类的实例，不会走代理。因此，注解缓存不会生效。**
+
+
+
+#### 解决方法：
+
+1. 可以把注解修饰的内部方法（getPayGlobalParamsControl removeGroupUserStatusCached）方法单独抽取到另外一个类里面，通过代理类引入。
+
+2. 通过  ((XXX) AopContext.currentProxy() ).getPayGlobalParamsControl方法获取当前类的代理类；
+3. 通过ApplicationContext获取当前类的代理对象，XXX  xxx = springContextUtil.getBean(XXX.class);
+
+
+
+
+
+
 
 
 
