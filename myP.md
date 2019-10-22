@@ -1,6 +1,63 @@
+# 😈 python
+
+常见异常
+
+1.'ascii' codec can't encode characters in position 0-1: ordinal not in 
+
+字符串在Python内部的表示是unicode编码，因此，在做编码转换时，通常需要以unicode作为中间编码，即先将其他编码的字符串解码（decode）成unicode，再从unicode编码（encode）成另一种编码。
+
+ Decode的作用是将其他编码的字符串转换成unicode编码，如str1.decode('gb2312')，表示将gb2312编码的字符串str1转换成unicode编码。
+
+  Encode的作用是将unicode编码转换成其他编码的字符串，如str2.encode('gb2312')，表示将unicode编码的字符串str2转换成gb2312编码。
+
+因此，转码的时候一定要先搞明白，字符串str是什么编码，然后decode成unicode，然后再encode成其他编码 代码中字符串的默认编码与代码文件本身的编码一致。
+
+​    python在安装时，默认的编码是ascii，当程序中出现非ascii编码时，python的处理常常会报这样的错UnicodeDecodeError: 'ascii' codec can't decode byte 0x?? in position 1: ordinal not in range(128)，python没办法处理非ascii编码的，此时需要自己设置将python的默认编码，一般设置为utf8的编码格式。
+
+   解决方法有三中：
+
+   1.在命令行修改，仅本会话有效：
+     1)通过>>>sys.getdefaultencoding()查看当前编码(若报错，先执行>>>import sys >>>reload(sys));
+     2)通过>>>sys.setdefaultencoding('utf8')设置编码
+
+   2.较繁琐，最有效
+     1)在程序文件中以下三句
+       import sys
+       reload(sys)
+       sys.setdefaultencoding('utf8')
+
+   3.修改Python本环境（推荐）
+     在Python的Lib\site-packages文件夹下新建一个sitecustomize.py文件，内容为：
+       \#coding=utf8
+       import sys
+       reload(sys)
+       sys.setdefaultencoding('utf8')
+
+   重启Python解释器，发现编码已被设置为utf8，与方案二同效；这是因为系统在Python启动的时候，自行调用该文件，设置系统的默认编码，而不需要每次都手动加上解决代码，属于一劳永逸的解决方法。
 
 
-😝
+
+
+
+
+
+
+
+
+
+
+
+
+
+mesos
+
+https://mesosphere.github.io/marathon/
+
+[分布式任务调度平台XXL-JOB](https://github.com/xuxueli/xxl-job)
+
+
+
+😝 
 
 # 😈 Common
 
@@ -60,6 +117,27 @@ ImmutableMap.builder()
 Class<?> instanceClass = ClassUtils.forName(instanceClassName, classLoader);
 
 
+
+
+
+
+pom.xml
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+		<java.version>1.8</java.version>
+	</properties>
+	
+application:
+spring.application.name=ADMIN
+server.port=8899
+server.port=${PORT:${SERVER_PORT:0}}
+    
+    
+eureka:
+@EnableDiscoveryClient
+eureka.client.service-url.defaultZone=http://localhost:8082/eureka
 
 ```
 
@@ -173,6 +251,12 @@ git:
 </dependency>	
 
 
+<!-- https://mvnrepository.com/artifact/org.apache.commons/commons-pool2 -->
+<dependency>
+    <groupId>org.apache.commons</groupId>
+    <artifactId>commons-pool2</artifactId>
+    <version>2.7.0</version>
+</dependency>
 
 
 
@@ -183,6 +267,31 @@ git:
 	<version>1.18.2</version>
 	<scope>provided</scope>
 </dependency>
+
+
+
+<!-- jxls excel下载-->
+<dependency>
+    <groupId>org.jxls</groupId>
+    <artifactId>jxls</artifactId>
+    <version>2.5.0</version>
+</dependency>
+<dependency>
+    <groupId>org.jxls</groupId>
+    <artifactId>jxls-poi</artifactId>
+    <version>1.2.0</version>
+</dependency>
+<dependency>
+    <groupId>org.jxls</groupId>
+    <artifactId>jxls-jexcel</artifactId>
+    <version>1.0.9</version>
+</dependency>
+
+<dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>2.4</version>
+        </dependency>
 ```
 
 
@@ -582,6 +691,335 @@ netstat -n | awk '/^tcp/ {++S[$NF]} END {for (a in S) print a, S[a]}'
 
 
 
+# 😈 mybatis
+
+1. 批量插入
+
+   ```xml
+   <insert id="batchInsert" parameterType="java.util.List" >
+   		<selectKey resultType ="java.lang.Integer" keyProperty= "reconBankStatementId"
+                   order= "AFTER">
+                  SELECT LAST_INSERT_ID()
+              </selectKey >
+   		INSERT INTO FIN_RECON_BANK_STATEMENT (
+   		GATEWAY,
+   		BANK_PAYMENT_TRADE_NO, BANK_GATEWAY_TRADE_NO,
+   		AMOUNT,OUT_AMOUNT, TRANSACTION_TIME,
+   		TRANSACTION_TYPE, DOWNLOAD_TIME,
+   		CREATE_TIME, MEMO,UPDATE_TIME,COMMERCIAL_NO,CARD_NO,REFERENCE_NO)
+   		VALUES
+   		 <foreach collection ="list" item="finRecon" index= "index" separator =",">
+   			(#{finRecon.gateway},
+   			#{finRecon.bankPaymentTradeNo},
+   			#{finRecon.bankGatewayTradeNo}, #{finRecon.amount},#{finRecon.outAmount},
+   			#{finRecon.transactionTime},
+   			#{finRecon.transactionType},#{finRecon.downloadTime}, NOW(),
+   			#{finRecon.memo},NOW(),#{finRecon.commercialNo},#{finRecon.cardNo},#{finRecon.referenceNo})
+   		</foreach>
+   	</insert>
+   
+   
+   
+   
+   
+   <insert id="batchInsert" parameterType="java.util.List" useGeneratedKeys="true">
+   		INSERT INTO STORED_CARD
+   			(CARD_BATCH_NO,CARD_NO,SERIAL_NO,AMOUNT,BALANCE,ACTIVE_STATUS,STOCK_STATUS,
+   				STATUS,CREATE_TIME,OVER_TIME,UPDATE_TIME)
+   		VALUES
+   		<foreach collection="list" index="index" item="item"  separator="," >
+   				(#{item.cardBatchNo},#{item.cardNo},#{item.serialNo},#{item.amount},#{item.balance},#{item.activeStatus},#{item.stockStatus},
+   				#{item.status},NOW(),#{item.overTime},NOW())
+   		</foreach>
+   	</insert>
+   
+   
+   
+   
+     /**
+        * 批量更新退款状态
+        * */
+       int batchUpdateRefundStatusByCardNos(@Param("cardNos") List<String> cardNos,@Param("refundStatus") byte refundStatus);
+    <update id="batchUpdateRefundStatusByCardNos">
+       update stored_card_order_bind set refund_status=#{refundStatus},update_time=now() where card_no in
+       <foreach collection="cardNos" item="item" index="index" separator="," open="(" close=")">
+         #{item,jdbcType=VARCHAR}
+       </foreach>
+     </update>
+           
+           
+           
+    <!-- 查询支付退款记录 -->
+       <sql id="selectPaymentAndRefund">
+           where 1=1
+           <if test="payOrderId!=null and payOrderId!=''">
+               and PP.order_id = #{payOrderId}
+           </if>
+           <if test="beginDate!=null">
+               and PP.create_time >= #{beginDate}
+           </if>
+           <if test="endDate!=null">
+               and PP.create_time <= #{endDate}
+           </if>
+           <if test="notified !=null and notified!=''">
+               <if test=' notified =="true" '>
+                   and PP.notified = 'true'
+               </if>
+               <if test=' notified =="false" '>
+                   and PP.notified != 'true'
+               </if>
+           </if>
+       </sql>    
+           
+   
+           
+           
+       /**
+        *  根据参数map 查询符合条件的记录总数
+        * @param params
+        * @return
+        */
+       Long selectSettlementByParamsCount(Map params);
+   
+   
+       /**
+        *  根据参数map 查询符合条件的记录
+        * @param params
+        * @return
+        */
+       List<PaySettlement> selectSettlementByParams(Map params);
+           
+           
+    <select id="selectSettlementByParamsCount" resultType="java.lang.Long" parameterType="java.util.HashMap">
+       select count(*) from pay_settlement ps
+       <include refid="selectSettlement"/>
+     </select>
+     <!-- 查询 -->
+     <sql id="selectSettlement">
+       where 1=1
+       <if test="settleDetailId!=null and settleDetailId!=''">
+           and ps.settle_detail_id = #{settleDetailId}
+       </if>
+       <if test="paymentId!=null and paymentId!=''">
+         and ps.payment_id = #{paymentId}
+       </if>
+       <if test="settleAmount!=null and settleAmount!=''">
+         and ps.settle_amount = #{settleAmount}
+       </if>
+       <if test="settleStatus!=null and settleStatus!=''">
+         and ps.settle_status = #{settleStatus}
+       </if>
+       <if test="transOut!=null and transOut!=''">
+         and ps.trans_out = #{transOut}
+       </if>
+       <if test="transOutType!=null and transOutType!=''">
+         and ps.trans_out_type = #{transOutType}
+       </if>
+       <if test="transIn!=null and transIn!=''">
+         and ps.trans_in = #{transIn}
+       </if>
+       <if test="transInType!=null and transInType!=''">
+         and ps.trans_in_type = #{transInType}
+       </if>
+       <if test="orderId!=null and orderId!=''">
+         and ps.order_id = #{orderId}
+       </if>
+       <if test="settleSerial!=null and settleSerial!=''">
+         and ps.settle_serial = #{settleSerial}
+       </if>
+       <if test="gatewayTradeNo!=null and gatewayTradeNo!=''">
+         and ps.gateway_trade_no = #{gatewayTradeNo}
+       </if>
+       <if test="beginDate!=null ">
+         and ps.create_time = #{beginDate}
+       </if>
+       <if test="endDate!=null ">
+         and ps.create_time = #{endDate}
+       </if>
+     </sql>
+   
+     <select id="selectSettlementByParams" resultMap="BaseResultMap" parameterType="java.util.HashMap">
+       select
+       settle_detail_id,
+       payment_id,
+       settle_amount,
+       settle_status,
+       trans_out,
+       trans_out_type,
+       trans_in,
+       trans_in_type,
+       order_id,
+       settle_serial,
+       gateway_trade_no,
+       create_time,
+       return_info,
+       memo,
+       update_time
+       from pay_settlement ps
+       <include refid="selectSettlement"/>
+       ORDER BY ps.create_time
+       <trim prefix="limit" prefixOverrides=",">
+         <if test="start != null">
+           #{start}
+         </if>
+         <if test="end != null">
+           , #{end}
+         </if>
+       </trim>
+     </select>        
+   ```
+
+   
+
+2. 
+
+
+
+# 😈 lombok
+
+ @Builder
+
+注意@Builder默认创建了一个全属性的私有构造器，在创建实例的时候必须要把所有属性显示赋值 或用如下方法
+
+
+
+```
+@Builder
+@AllArgsConstructor
+```
+
+
+
+>The builder annotation creates a so-called 'builder' aspect to the class that is annotated or the class that contains a member which is annotated with @Builder.
+>If a member is annotated, it must be either a constructor or a method. **If a class is annotated, then a private constructor is generated with all fields as arguments** (as if @AllArgsConstructor(AccessLevel.PRIVATE) is present on the class), and it is as if this constructor has been annotated with @Builder instead.
+>
+>The effect of @Builder is that an inner class is generated named TBuilder, with a private constructor. Instances of TBuilder are made with the method named builder() which is also generated for you in the class itself (not in the builder class)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 😈 mysql
+
+1.常用命令
+
+```mysql
+查看 mysql 是否打开自动提交
+mysql> show variables like 'AUTOCOMMIT';
++---------------+-------+
+| Variable_name | Value |
++---------------+-------+
+| autocommit    | ON    |
++---------------+-------+
+1 row in set (0.01 sec)
+--1 或者 ON 表示启用， 0 或者 OFF 表示禁用
+
+打开和关闭自动提交
+mysql> SET AUTOCOMMIT = 0/1; 
+
+
+START TRANSACTION | BEGIN： 显式地开启一个事务；
+COMMIT：也可以使用 COMMIT WORK，不过二者是等价的。COMMIT 会提交事务，并使已对数据库进行的所有修改成为永久性的；
+ROLLBACK：也可以使用 ROLLBACK WORK，不过二者是等价的。回滚会结束用户的事务，并撤销正在进行的所有未提交的修改；
+SAVEPOINT identifier：SAVEPOINT 允许在事务中创建一个保存点，一个事务中可以有多个 SAVEPOINT；
+RELEASE SAVEPOINT identifier：删除一个事务的保存点，当没有指定的保存点时，执行该语句会抛出一个异常；
+ROLLBACK TO identifier：把事务回滚到标记点；
+SET TRANSACTION：用来设置事务的隔离级别。
+	
+1、查看InnoDB存储引擎系统级的隔离级别和会话级的隔离级别，命令和结果如下：
+mysql> select @@global.tx_isolation,@@tx_isolation;
++-----------------------+-----------------+
+| @@global.tx_isolation | @@tx_isolation  |
++-----------------------+-----------------+
+| REPEATABLE-READ       | REPEATABLE-READ |
++-----------------------+-----------------+
+
+
+2、设置InnoDB存储引擎隔离级别：
+set [ global | session ] transaction isolation level [Read uncommitted | Read committed | Repeatable | Serializable];
+
+mysql> set session  transaction isolation level Serializable;
+Query OK, 0 rows affected (0.01 sec)
+
+mysql> select @@global.tx_isolation,@@tx_isolation;
++-----------------------+----------------+
+| @@global.tx_isolation | @@tx_isolation |
++-----------------------+----------------+
+| REPEATABLE-READ       | SERIALIZABLE   |
++-----------------------+----------------+
+1 row in set (0.00 sec)
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # 😈elasticsearch
 
 
@@ -778,9 +1216,344 @@ Map<Class<? extends Annotation>, List<Method>>
 
 
 
+# 😈 Collection
 
 
-# 😈  Concurrency
+
+
+
+
+
+
+
+![1568022440128](picture/myP/1568022440128.png)
+
+```java
+TreeMap
+
+1.查找
+
+TreeMap基于红黑树实现，而红黑树是一种自平衡二叉查找树，所以 TreeMap 的查找操作流程和二叉查找树一致。
+
+二叉树的查找流程是这样的，先将目标值和根节点的值进行比较，如果目标值小于根节点的值，则再和根节点的左孩子进行比较。如果目标值大于根节点的值，则继续和根节点的右孩子比较。在查找过程中，如果目标值和二叉树中的某个节点值相等，则返回 true，否则返回 false。
+
+TreeMap 查找和此类似，只不过在 TreeMap 中，节点（Entry）存储的是键值对<k,v>。在查找过程中，比较的是键的大小，返回的是值，如果没找到，则返回null。TreeMap 中的查找方法是get，具体实现在getEntry方法中，相关源码如下：
+
+public V get(Object key) {
+    Entry<K,V> p = getEntry(key);
+    return (p==null ? null : p.value);
+}
+final Entry<K,V> getEntry(Object key) {
+    // Offload comparator-based version for sake of performance
+    if (comparator != null)
+        return getEntryUsingComparator(key);
+    if (key == null)
+        throw new NullPointerException();
+    @SuppressWarnings("unchecked")
+    Comparable<? super K> k = (Comparable<? super K>) key;
+    Entry<K,V> p = root;
+    while (p != null) {
+        int cmp = k.compareTo(p.key);
+        if (cmp < 0)
+            p = p.left;
+        else if (cmp > 0)
+            p = p.right;
+        else
+            return p;
+    }
+    return null;
+}
+	
+
+2.遍历
+遍历操作也是大家使用频率较高的一个操作，对于TreeMap，使用方式一般如下：
+for(Object key : map.keySet()) {
+    // do something
+}
+for(Map.Entry entry : map.entrySet()) {
+    // do something
+}
+
+从上面代码片段中可以看出，大家一般都是对 TreeMap 的 key 集合或 Entry 集合进行遍历。上面代码片段中用 foreach 遍历keySet 方法产生的集合，在编译时会转换成用迭代器遍历，等价于：
+Set keys = map.keySet();
+Iterator ite = keys.iterator();
+while (ite.hasNext()) {
+    Object key = ite.next();
+    // do something
+}
+另一方面，TreeMap 有一个特性，即可以保证键的有序性，默认是正序。所以在遍历过程中，大家会发现 TreeMap 会从小到大输出键的值。那么，接下来就来分析一下keySet方法，以及在遍历 keySet 方法产生的集合时，TreeMap 是如何保证键的有序性的。
+public Set<K> keySet() {
+    return navigableKeySet();
+}
+
+public NavigableSet<K> navigableKeySet() {
+    KeySet<K> nks = navigableKeySet;
+    return (nks != null) ? nks : (navigableKeySet = new KeySet<>(this));
+}
+
+static final class KeySet<E> extends AbstractSet<E> implements NavigableSet<E> {
+    private final NavigableMap<E, ?> m;
+    KeySet(NavigableMap<E,?> map) { m = map; }
+
+    public Iterator<E> iterator() {
+        if (m instanceof TreeMap)
+            return ((TreeMap<E,?>)m).keyIterator();
+        else
+            return ((TreeMap.NavigableSubMap<E,?>)m).keyIterator();
+    }
+
+    // 省略非关键代码
+}
+
+Iterator<K> keyIterator() {
+    return new KeyIterator(getFirstEntry());
+}
+
+final class KeyIterator extends PrivateEntryIterator<K> {
+    KeyIterator(Entry<K,V> first) {
+        super(first);
+    }
+    public K next() {
+        return nextEntry().key;
+    }
+}
+
+abstract class PrivateEntryIterator<T> implements Iterator<T> {
+    Entry<K,V> next;
+    Entry<K,V> lastReturned;
+    int expectedModCount;
+
+    PrivateEntryIterator(Entry<K,V> first) {
+        expectedModCount = modCount;
+        lastReturned = null;
+        next = first;
+    }
+
+    public final boolean hasNext() {
+        return next != null;
+    }
+
+    final Entry<K,V> nextEntry() {
+        Entry<K,V> e = next;
+        if (e == null)
+            throw new NoSuchElementException();
+        if (modCount != expectedModCount)
+            throw new ConcurrentModificationException();
+        // 寻找节点 e 的后继节点
+        next = successor(e);
+        lastReturned = e;
+        return e;
+    }
+
+    // 其他方法省略
+}
+
+//返回指定Entry的后继者，如果不是，则返回null。
+//entry的后继者，即是大于当前t的key的最小的entry
+ static <K,V> TreeMap.Entry<K,V> successor(Entry<K,V> t) {
+        if (t == null)
+            return null;
+        else if (t.right != null) {
+        //t有右节点，返回右子树中的最小节点
+            Entry<K,V> p = t.right;
+            while (p.left != null)
+                p = p.left;
+            return p;
+        } else {
+        //如果t无右子树，那么大于t的entry
+            Entry<K,V> p = t.parent;
+            Entry<K,V> ch = t;
+            while (p != null && ch == p.right) {
+                ch = p;
+                p = p.parent;
+            }
+            return p;
+        }
+    }
+
+
+```
+
+
+
+# 😈Thread
+
+## ThreadPoolExecutor
+
+```java
+public ThreadPoolExecutor(int corePoolSize,
+                              int maximumPoolSize,
+                              long keepAliveTime,
+                              TimeUnit unit,
+                              BlockingQueue<Runnable> workQueue,
+                              ThreadFactory threadFactory) {
+        this(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue,
+             threadFactory, defaultHandler);
+    }
+- 参数
+corePoolSize 　　　　　　    核心线程数 
+maximumPoolSize 　　　　     最大线程数 阻塞队列装不下的后 总得线程数 包含corePoolSize 
+keepAliveTime 　　　　　　   超时时间 线程池中当前的空闲线程服务完某任务后的存活时间。如果时间足                            够长，那么可能会服务其它任务
+unit	　　　　　　　　　　　时间单位
+workQueue	　　　　　　　　  阻塞队列 线程数大于核心线程后放到队列中
+threadFactory　　　　　　　　 线程池工厂
+handler	　　　　　　　　　　 	拒绝策略 阻塞队列满了,也达到了最大线程数 执行拒绝策略
+
+```
+
+- - corePoolSize：核心池的大小，在创建了线程池后，即在没有任务到来之前就创建 默认情况下，在创建了线程池后，线程池中的线程数为0，除非调用了prestartAllCoreThreads()或者prestartCoreThread()方法来预创建线程.当有任务来之后，就会创建一个线程去执行任务，当线程池中的线程数目达到corePoolSize后，就会把到达的任务放到缓存队列当中；
+
+- - keepAliveTime：表示线程没有任务执行时最多保持多久时间会终止。默认情况下，只有当线程池中的线程数大于corePoolSize时，keepAliveTime才会起作用，直到线程池中的线程数不大于corePoolSize，即当线程池中的线程数大于corePoolSize时，如果一个线程空闲的时间达到keepAliveTime，则会终止，直到线程池中的线程数不超过corePoolSize。但是如果调用了allowCoreThreadTimeOut(boolean)方法，在线程池中的线程数不大于corePoolSize时，keepAliveTime参数也会起作用，直到线程池中的线程数为0；
+
+- **流程**
+
+1）当池子大小 小于corePoolSize就新建线程，并处理请求
+2）当池子大小 等于corePoolSize，把请求放入workQueue中，池子里的空闲线程就去从workQueue中取任务并处理
+3）当workQueue放不下新入的任务时，新建线程入池，并处理请求(不用等待队列)，如果池子大小撑到了maximumPoolSize就用RejectedExecutionHandler来做拒绝处理
+4）另外，当池子的线程数大于corePoolSize的时候，多余的线程会等待keepAliveTime长的时间，如果无请求可处理就自行销毁
+
+ 处理步骤: 核心线程 << 阻塞队列 <<最大线程数 
+
+- **通俗流程解释**
+
+假如有一个工厂，工厂里面有10个工人，每个工人同时只能做一件任务。因此只要当10个工人中有工人是空闲的，来了任务就分配给空闲的工人做；
+当10个工人都有任务在做时，如果还来了任务，就把任务进行排队等待；
+如果说新任务数目增长的速度远远大于工人做任务的速度，那么此时工厂主管可能会想补救措施，比如重新招4个临时工人进来；
+然后就将任务也分配给这4个临时工人做；
+如果说着14个工人做任务的速度还是不够，此时工厂主管可能就要考虑不再接收新的任务或者抛弃前面的一些任务了。
+当这14个工人当中有人空闲时，而新任务增长的速度又比较缓慢，工厂主管可能就考虑辞掉4个临时工了，只保持原来的10个工人，毕竟请额外的工人是要花钱的.
+这个例子中的corePoolSize就是10，而maximumPoolSize就是14（10+4）。
+
+也就是说corePoolSize就是线程池大小，maximumPoolSize在我看来是线程池的一种补救措施，即任务量突然过大时的一种补救措施。 
+
+ 
+
+- **阻塞队列**
+
+1）ArrayBlockingQueue：基于数组的先进先出队列，此队列创建时必须指定大小；
+
+2）LinkedBlockingQueue：基于链表的先进先出队列，如果创建时没有指定此队列大小，则默认为Integer.MAX_VALUE；
+
+3）synchronousQueue：这个队列比较特殊，它不会保存提交的任务，而是将直接新建一个线程来执行新来的任务
+
+ 
+
+- **拒绝策略** 四种
+
+　AbortPolicy 默认 直接抛弃 并抛异常
+　DiscardPolicy	直接抛弃 不抛异常
+　CallerRunsPolicy 在主线程中执行
+　DiscardOldestPolicy 把注册队列中最老的抛弃掉 执行当前的
+　自定义的策略 实现RejectedExecutionHandler即可
+
+- **测试案例**
+
+  ```java
+  public class Test {
+       public static void main(String[] args) {   
+           ThreadPoolExecutor executor = new ThreadPoolExecutor(5, 10, 200, TimeUnit.MILLISECONDS,
+                   new ArrayBlockingQueue<Runnable>(5));
+   
+           for(int i=0;i<15;i++){
+               MyTask myTask = new MyTask(i);
+               executor.execute(myTask);
+               System.out.println("线程池中线程数目："+executor.getPoolSize()+"，队列中等待执行的任务数目："+
+               executor.getQueue().size()+"，已执行完别的任务数目："+executor.getCompletedTaskCount());
+           }
+           executor.shutdown();
+       }
+  }
+   
+  class MyTask implements Runnable {
+      private int taskNum;
+   
+      public MyTask(int num) {
+          this.taskNum = num;
+      }
+   
+      @Override
+      public void run() {
+          System.out.println("正在执行task "+taskNum);
+          try {
+              Thread.currentThread().sleep(4000);
+          } catch (InterruptedException e) {
+              e.printStackTrace();
+          }
+          System.out.println("task "+taskNum+"执行完毕");
+      }
+  }
+  
+  
+  正在执行task 0
+  线程池中线程数目：1，队列中等待执行的任务数目：0，已执行完别的任务数目：0
+  线程池中线程数目：2，队列中等待执行的任务数目：0，已执行完别的任务数目：0
+  正在执行task 1
+  线程池中线程数目：3，队列中等待执行的任务数目：0，已执行完别的任务数目：0
+  正在执行task 2
+  线程池中线程数目：4，队列中等待执行的任务数目：0，已执行完别的任务数目：0
+  正在执行task 3
+  线程池中线程数目：5，队列中等待执行的任务数目：0，已执行完别的任务数目：0
+  正在执行task 4
+  线程池中线程数目：5，队列中等待执行的任务数目：1，已执行完别的任务数目：0
+  线程池中线程数目：5，队列中等待执行的任务数目：2，已执行完别的任务数目：0
+  线程池中线程数目：5，队列中等待执行的任务数目：3，已执行完别的任务数目：0
+  线程池中线程数目：5，队列中等待执行的任务数目：4，已执行完别的任务数目：0
+  线程池中线程数目：5，队列中等待执行的任务数目：5，已执行完别的任务数目：0
+  线程池中线程数目：6，队列中等待执行的任务数目：5，已执行完别的任务数目：0
+  正在执行task 10
+  线程池中线程数目：7，队列中等待执行的任务数目：5，已执行完别的任务数目：0
+  正在执行task 11
+  线程池中线程数目：8，队列中等待执行的任务数目：5，已执行完别的任务数目：0
+  正在执行task 12
+  线程池中线程数目：9，队列中等待执行的任务数目：5，已执行完别的任务数目：0
+  正在执行task 13
+  线程池中线程数目：10，队列中等待执行的任务数目：5，已执行完别的任务数目：0
+  正在执行task 14
+  task 3执行完毕
+  task 0执行完毕
+  task 2执行完毕
+  task 1执行完毕
+  正在执行task 8
+  正在执行task 7
+  正在执行task 6
+  正在执行task 5
+  task 4执行完毕
+  task 10执行完毕
+  task 11执行完毕
+  task 13执行完毕
+  task 12执行完毕
+  正在执行task 9
+  task 14执行完毕
+  task 8执行完毕
+  task 5执行完毕
+  task 7执行完毕
+  task 6执行完毕
+  task 9执行完毕
+  ```
+
+
+
+- ***\*如何合理的配置线程池\****
+  要想合理的配置线程池，就必须首先分析任务特性，可以从以下几个角度来进行分析：
+  1. 任务的性质：CPU密集型任务，IO密集型任务和混合型任务。
+  2. 任务的优先级：高，中和低。
+  3. 任务的执行时间：长，中和短。
+  4. 任务的依赖性：是否依赖其他系统资源，如数据库连接。
+
+任务性质不同的任务可以用不同规模的线程池分开处理。CPU密集型任务配置尽可能少的线程数量，如配置Ncpu+1个线程的线程池。IO密集型任务则由于需要等待IO操作，线程并不是一直在执行任务，则配置尽可能多的线程，如2*Ncpu。混合型的任务，如果可以拆分，则将其拆分成一个CPU密集型任务和一个IO密集型任务，只要这两个任务执行的时间相差不是太大，那么分解后执行的吞吐率要高于串行执行的吞吐率，如果这两个任务执行时间相差太大，则没必要进行分解。我们可以通过Runtime.getRuntime().availableProcessors()方法获得当前设备的CPU个数。
+
+优先级不同的任务可以使用优先级队列PriorityBlockingQueue来处理。它可以让优先级高的任务先得到执行，需要注意的是如果一直有优先级高的任务提交到队列里，那么优先级低的任务可能永远不能执行。
+
+执行时间不同的任务可以交给不同规模的线程池来处理，或者也可以使用优先级队列，让执行时间短的任务先执行。
+
+依赖数据库连接池的任务，因为线程提交SQL后需要等待数据库返回结果，如果等待的时间越长CPU空闲时间就越长，那么线程数应该设置越大，这样才能更好的利用CPU。
+
+**建议使用有界队列**，有界队列能增加系统的稳定性和预警能力，可以根据需要设大一点，比如几千。有一次我们组使用的后台任务线程池的队列和线程池全满了，不断的抛出抛弃任务的异常，通过排查发现是数据库出现了问题，导致执行SQL变得非常缓慢，因为后台任务线程池里的任务全是需要向数据库查询和插入数据的，所以导致线程池里的工作线程全部阻塞住，任务积压在线程池里。如果当时我们设置成无界队列，线程池的队列就会越来越多，有可能会撑满内存，导致整个系统不可用，而不只是后台任务出现问题。当然我们的系统所有的任务是用的单独的服务器部署的，而我们使用不同规模的线程池跑不同类型的任务，但是出现这样问题时也会影响到其他任务。
+
+
+
+
+# 😈Concurrency
 
 ### SynchronousQueue
 
@@ -1904,7 +2677,8 @@ public class Test {
 ```java
 private static String paymentWarningDests;
 @Value("${jms.event_type.payment_waring.destinations}")
-private void setPaymentWarningDests(String paymentWarningDests) {//public private都可以,不能用static
+private void setPaymentWarningDests(String paymentWarningDests) {
+    //public private都可以,不能用static
     JMSProducer.paymentWarningDests = paymentWarningDests;
 }
 ```
@@ -2886,7 +3660,7 @@ result=success
 ```freemarker
 1.c 用于将数字转换为字符串 
 ${123?c} 结果为123 
-2.string用于将数字转换为字符串 
+2.string用于将数字转换为		字符串 
 Freemarker中预订义了三种数字格式：number,currency（货币）和percent(百分比)其中number为默认的数字格式转换 例如： <#assign tempNum=20> 
 ${tempNum}    
 ${tempNum?string.number}或${tempNum?string(“number”)} 结果为20 
@@ -4597,11 +5371,14 @@ Spring Aop 中有两种动态代理，分别是JDK动态代理和Cglib动态代�
 
 
 来了解下AspectJ类型匹配的通配符：
-*：匹配任何数量字符；
+
+
+```java
+：匹配任何数量字符；
 ..：匹配任何数量字符的重复，如在类型模式中匹配任何数量子包；而在方法参数模式中匹配任何数量参数。
 +：匹配指定类型的子类型；仅能作为后缀放在类型模式后边。
 java.lang.String 匹配String类型；
-java.*.String 匹配java包下的任何“一级子包”下的String类型；
+java..String 匹配java包下的任何“一级子包”下的String类型；
 如匹配java.lang.String，但不匹配java.lang.ss.String
 java..* 匹配java包及任何子包下的任何类型;
 如匹配java.lang.String、java.lang.annotation.Annotation
@@ -4609,7 +5386,7 @@ java.lang.*ing 匹配任何java.lang包下的以ing结尾的类型；
 java.lang.Number+ 匹配java.lang包下的任何Number的自类型；
 如匹配java.lang.Integer，也匹配java.math.BigInteger
 
-```java
+
 1、切入点表达式：对指定的方法进行拦截，并且生成代理表达式。
 2、拦截所有public方法
 <aop:pointcut expression="execution(public * *(..))"id="pt"/>
@@ -5683,3 +6460,56 @@ httpClient = new DefaultHttpClient();  httpClient.getParams().setIntParameter(Co
 参考：
 
 [Apache HttpClient 没有设置time out导致应用长时间阻塞的问题](http://www.importnew.com/22952.html)	
+
+
+
+## springboot 达成jar包后如何读取资源文件
+
+web项目下资源目录结构
+
+```
+--resources
+----static
+------template
+--------paySettlementListTemplate.xls
+```
+
+
+
+spring的静态文件目录设置
+
+```properties
+spring.resources.static-locations=classpath:/templates/,classpath:/static/
+```
+
+
+
+异常方法：
+
+```java
+package com.wisdomtour.payment.channel.common.util; 
+位于common项目中，获取web项目下的静态资源，获取异常，文件不存在
+ExcelUtil.class.getResource("/static/").getFile();	
+```
+
+
+
+解决方法：
+
+```java
+InputStream input1 = ExcelUtil.class.getResourceAsStream("/static" + resourceName);
+
+InputStream resourceAsStream = ExcelUtil.class.getClassLoader().getResourceAsStream("/static" + resourceName);
+
+
+ClassPathResource classPathResource = new ClassPathResource("/static/template/paySettlementListTemplate.xls");
+```
+
+以上3中方法都可以解决
+
+在开发环境运行时，会把资源文件编译到 项目\target\classes\static\template\xxx.xls（D:\workSpace\work\wisdom-payment\payment-channel-web\target\classes\static\template） 目录下，**但是打包成jar后，Resource下的文件是存在于jar这个文件里面，在磁盘上是没有真实路径存在的，它是位于jar内部的一个路径。所以通过ResourceUtils.getFile或者this.getClass().getResource("")方法无法正确获取文件。**
+————————————————
+
+
+
+
