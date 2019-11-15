@@ -1,3 +1,51 @@
+
+
+
+
+
+
+博客系统
+
+ https://github.com/halo-dev/halo?utm_source=gold_browser_extension 
+
+[spring-Scheduled   CronSequenceGenerator](https://docs.spring.io/spring/docs/current/javadoc-api/org/springframework/scheduling/support/CronSequenceGenerator.html)
+
+
+
+mesos
+
+https://mesosphere.github.io/marathon/
+
+[分布式任务调度平台XXL-JOB](https://github.com/xuxueli/xxl-job)
+
+ https://github.com/xuxueli/xxl-job 
+
+zabbix
+
+
+
+[MyBatis-Plus ](https://mp.baomidou.com/ )
+
+>[mybatis-plus的使用]( https://www.jianshu.com/p/a4d5d310daf8 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # 😈 python
 
 常见异常
@@ -49,11 +97,9 @@
 
 
 
-mesos
 
-https://mesosphere.github.io/marathon/
 
-[分布式任务调度平台XXL-JOB](https://github.com/xuxueli/xxl-job)
+
 
 
 
@@ -139,6 +185,12 @@ eureka:
 @EnableDiscoveryClient
 eureka.client.service-url.defaultZone=http://localhost:8082/eureka
 
+
+
+
+WebApplicationContextUtils.getWebApplicationContext(request.getSession().getServletContext())
+    
+    SpringBeanProxy.getBean("paymentMonitorController");
 ```
 
 
@@ -158,6 +210,144 @@ eureka.client.service-url.defaultZone=http://localhost:8082/eureka
 针对分布式领域著名的CAP理论（C——数据一致性，A——服务可用性，P——服务对网络分区故障的容错性），**Zookeeper 保证的是CP ，但对于服务发现而言，可用性比数据一致性更加重要 ，而 Eureka 设计则遵循AP原则** 。
 
 
+
+1.NetUtils
+
+```java
+
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.util.Enumeration;
+import java.util.regex.Pattern;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+/**
+ * 网络ip
+ * @date 2016-10-28
+ * 
+ */
+public class NetUtils {
+
+	private static Log logger = LogFactory.getLog(NetUtils.class);
+
+	private static final Pattern IP_PATTERN = Pattern.compile("\\d{1,3}(\\.\\d{1,3}){3,5}$");
+
+	/**
+	 * 本机ip
+	 * @return
+	 */
+	public static String getLocalIP() {
+		InetAddress localAddress = getLocalAddress0();
+		return localAddress == null ? "127.0.0.1" : localAddress.getHostAddress();
+	}
+
+	/**
+	 * 有效ip校验
+	 * 
+	 * @param address
+	 * @return
+	 */
+	private static boolean isValidAddress(InetAddress address) {
+
+		if (address == null || address.isLoopbackAddress())
+			return false;
+		String ip = address.getHostAddress();
+
+		if (ip != null && !ip.startsWith("0.0") && !"127.0.0.1".equals(ip) && IP_PATTERN.matcher(ip).matches()) {
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * 本机网络信息
+	 * @return
+	 */
+	private static InetAddress getLocalAddress0() {
+
+		// host文件信息
+		InetAddress localAddress = null;
+		try {
+			localAddress = InetAddress.getLocalHost();
+			if (isValidAddress(localAddress)) {
+				
+				return localAddress;
+			}
+		} catch (Exception e) {
+			logger.error(e.getMessage(), e);
+		}
+		
+		//第一块网卡信息
+		try {
+			Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+			if (interfaces != null) {
+				while (interfaces.hasMoreElements()) {
+
+					NetworkInterface network = interfaces.nextElement();
+					Enumeration<InetAddress> addresses = network.getInetAddresses();
+					if (addresses != null) {
+						while (addresses.hasMoreElements()) {
+							InetAddress address = addresses.nextElement();
+							if (isValidAddress(address)) {
+								return address;
+							}
+						}
+					}
+				}
+			}
+		} catch (Exception e) {
+			logger.error(e.getMessage(), e);
+		}
+		return localAddress;
+	}
+	
+	public static void main(String[] args) {
+		System.out.println(getLocalIP());
+	}
+
+}
+
+
+ /**
+	 * 获取用户真实IP地址，不使用request.getRemoteAddr();的原因是有可能用户使用了代理软件方式避免真实IP地址
+	 * 
+	 * @param request
+	 * @return
+	 */
+	public static String getRemoteIpAddress(HttpServletRequest request) {
+		String ip = request.getHeader("x-forwarded-for");
+		if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+			ip = request.getHeader("Proxy-Client-IP");
+		}
+		if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+			ip = request.getHeader("WL-Proxy-Client-IP");
+		}
+		if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+			ip = request.getHeader("HTTP_CLIENT_IP");
+		}
+		if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+			ip = request.getHeader("HTTP_X_FORWARDED_FOR");
+		}
+		if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+			ip = request.getHeader("X-Real-IP");
+		}
+		if (ip == null || ip.length() == 0 || "unknown".equalsIgnoreCase(ip)) {
+			ip = request.getRemoteAddr();
+		}
+		ip = transferIP(ip);
+		return ip;
+	}
+	
+	private static String transferIP(String ip) {
+		if (ip != null && (ip.equals("127.0.0.1") || ip.startsWith("0:0:0:0") || ip.equals("localhost"))) {
+			ip = NetUtils.getLocalIP();
+		}
+		return ip;
+	}
+```
 
 
 
@@ -292,6 +482,18 @@ git:
             <artifactId>commons-io</artifactId>
             <version>2.4</version>
         </dependency>
+
+<!-- log -->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>1.1.11</version>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            			<artifactId>logback-core</artifactId>
+            <version>1.1.11</version>
+        </dependency>
 ```
 
 
@@ -313,7 +515,7 @@ git:
 
 
 
-[spring-Scheduled   CronSequenceGenerator](https://docs.spring.io/spring/docs/current/javadoc-api/org/springframework/scheduling/support/CronSequenceGenerator.html)
+
 
 
 
@@ -372,6 +574,23 @@ upstream http_payment_channel_servers{
         server 192.168.10.51:8083;
 	server 192.168.30.238:8083;
 }
+```
+
+# 😈 logback 
+
+config
+
+
+
+```prop
+#logging.path=/opt/apache-tomcat-wisdomtour-order-app/logs
+logging.path=/mnt/mesos/sandbox/
+logging.level.root=info
+#logging.level.com.ibatis=DEBUG
+logback.appname=wisdomtour-payment-channel
+spring.application.name=wisdomtour-payment-channel
+#logging.level.com.wisdomtour.payment.channel.dal.dao=DEBUG
+#logging.level.com.wisdomtour.payment.channel.dal.dao.PaySettlementMapper=DEBUG
 ```
 
 
@@ -866,7 +1085,44 @@ netstat -n | awk '/^tcp/ {++S[$NF]} END {for (a in S) print a, S[a]}'
            , #{end}
          </if>
        </trim>
-     </select>        
+     </select>    
+           
+   
+   // 批量插入，可以返回自增主键到映射实体中
+   <insert id="batchInsert" parameterType="java.util.List" useGeneratedKeys="true"
+             keyProperty="settleDetailId">
+       <!--<selectKey resultType ="java.lang.Integer" keyProperty= "settleDetailId" order= "AFTER">-->
+         <!--SELECT LAST_INSERT_ID()-->
+       <!--</selectKey >-->
+       INSERT INTO pay_settlement (
+       payment_id,
+       settle_amount,
+       settle_status,
+       trans_out,
+       trans_out_type,
+       trans_in,
+       trans_in_type,
+       order_id,
+       settle_serial,
+       gateway_trade_no
+       )
+       VALUES
+       <foreach collection ="list" item="paySettlement" index= "index" separator =",">
+         (#{paySettlement.paymentId},
+         #{paySettlement.settleAmount},
+         #{paySettlement.settleStatus},
+         #{paySettlement.transOut},
+         #{paySettlement.transOutType},
+         #{paySettlement.transIn},
+         #{paySettlement.transInType},
+         #{paySettlement.orderId},
+         #{paySettlement.settleSerial},
+         #{paySettlement.gatewayTradeNo}
+       )
+       </foreach>
+     </insert>
+           
+           
    ```
 
    
@@ -894,6 +1150,36 @@ netstat -n | awk '/^tcp/ {++S[$NF]} END {for (a in S) print a, S[a]}'
 >If a member is annotated, it must be either a constructor or a method. **If a class is annotated, then a private constructor is generated with all fields as arguments** (as if @AllArgsConstructor(AccessLevel.PRIVATE) is present on the class), and it is as if this constructor has been annotated with @Builder instead.
 >
 >The effect of @Builder is that an inner class is generated named TBuilder, with a private constructor. Instances of TBuilder are made with the method named builder() which is also generated for you in the class itself (not in the builder class)
+
+
+
+
+
+# 😈 Redis
+
+1.配置
+
+```properties
+
+#集群配置
+spring.redis.cluster.max-redirects=5
+spring.redis.cluster.nodes=10.200.4.76:6379,10.200.4.75:6379,10.200.4.74:6379
+spring.redis.pool.max-active=30
+spring.redis.pool.max-idle=10
+spring.redis.pool.max-wait=3000
+spring.redis.pool.min-idle=10
+spring.redis.timeout=1000
+
+
+# 单机配置
+spring.redis.host=10.200.2.119:6379
+spring.redis.port=6379
+spring.redis.pool.max-active=30
+spring.redis.pool.max-idle=10
+spring.redis.pool.max-wait=3000
+spring.redis.pool.min-idle=10
+spring.redis.timeout=1000
+```
 
 
 
@@ -2617,7 +2903,74 @@ public class MyKeyGenerator {
 
 
 
+# 😈 接口
+
+## InitializingBean
+
+
+
+
+
+>Interface to be implemented by beans that need to react once all their properties have been set by a BeanFactory: for example, to perform custom initialization, or merely to check that all mandatory properties have been set.
+>
+>An alternative to implementing InitializingBean is specifying a custom init-method, for example in an XML bean definition
+
+
+
+
+
+
+
 # 😈 注解
+
+### @Autowired
+
+1. 注入map
+
+```java
+public interface MyService {
+    void execute(Object t);
+}
+
+@Service("Aservice")
+public class Aservice implements MyService {
+    @Override
+    public void execute(Object t) {
+    }
+}
+
+@Service("Bservice")
+public class Bservice implements MyService {
+    @Override
+    public void execute(Object t) {
+    }
+}
+
+ 	@Autowired
+    private Map<String,MyService> map ;
+
+    public void execute(){
+
+       map.forEach((key,value)->{
+           System.out.println(key+"="+value);
+       });
+/*       Aservice=com.test.eliminateIfElse.Aservice@4be490da
+         Bservice=com.test.eliminateIfElse.Bservice@4168f3d9
+*/
+    }
+
+
+```
+
+
+
+
+
+
+
+
+
+
 
 ### @PostConstruct
 
@@ -2751,11 +3104,102 @@ public interface EurekaClient extends LookupService {}
 
 `@Order是`控制配置类的加载顺序，还能控制List<XXX> 里面放的XXX的实现注入的顺序
 
-独使用@Order(1), @Order(2) Order注解仅仅用于控制组件的加载顺序，**不能控制注入优先级**
+独使用@Order(1), @Order(2) Order注解仅仅用于控制组件的加载顺序，**不能控制注入优先级(即优先使用哪个)**
 
 遇到接口多实现的问题，那么要具体注入那个接口的实现就需要@Primary或@Qualifier控制了
 
-参考：https://blog.csdn.net/weixin_42465125/article/details/88574670
+> 参考：https://blog.csdn.net/weixin_42465125/article/details/88574670
+
+```java
+
+public interface XStrategyService {
+}
+ 
+@Service
+public class XStrategyServiceImpl01 implements XStrategyService {
+}
+ 
+@Service
+public class XStrategyServiceImpl02 implements XStrategyService {
+}
+ 
+@Bean
+@Order(1)
+XStrategyServiceImpl01 xStrategyServiceImpl01() {
+	return new XStrategyServiceImpl01();
+}
+@Bean
+@Order(2)
+XStrategyServiceImpl02 xStrategyServiceImpl02() {
+	return new XStrategyServiceImpl02();
+}
+@Autowired
+private List<XStrategyService> xStrategyServices; // XStrategyServiceImpl01 first
+
+List中会注入xStrategyServiceImpl01 和 xStrategyServiceImpl02 并且，xStrategyServiceImpl01在前
+
+======================
+public interface XStrategyService {
+}
+ 
+@Service
+@Order(1)
+public class XStrategyServiceImpl01 implements XStrategyService {
+}
+ 
+@Service
+@Order(2)
+public class XStrategyServiceImpl02 implements XStrategyService {
+}
+ 
+@Autowired
+private XStrategyService xStrategyService;  // Error
+
+=======================
+    
+
+public interface XStrategyService {
+}
+ 
+@Service
+@Order(1)
+@Primary
+public class XStrategyServiceImpl01 implements XStrategyService {
+}
+ 
+@Service
+@Order(2)
+public class XStrategyServiceImpl02 implements XStrategyService {
+}
+ 
+@Autowired
+private XStrategyService xStrategyService;  // XStrategyServiceImpl01将被选择
+ 
+    
+    
+======================= 
+    
+Spring4.0后的新特性，就是根据泛型类型可以自动选择注入 
+public interface XStrategyService<T> {
+}
+ 
+@Service
+public class XStrategyServiceImpl01 implements XStrategyService<XXX> {
+}
+ 
+@Service
+public class XStrategyServiceImpl02 implements XStrategyService<YYY> {
+}
+ 
+@Autowired
+private XStrategyService<XXX> xStrategyService; // XStrategyServiceImpl01将被选择
+
+
+
+
+```
+
+
 
 
 
@@ -5364,11 +5808,34 @@ Spring Aop 中有两种动态代理，分别是JDK动态代理和Cglib动态代�
 
 
 
-
+[pring aop切入点表达式详解]( https://blog.csdn.net/qq_36951116/article/details/79172485 )
 
 ### [aop切入点表达式](https://www.cnblogs.com/imzhuo/p/5888007.html)
 
 
+​    切入点指示符用来指示切入点表达式目的，，在Spring AOP中目前只有执行方法这一个连接点，Spring AOP支持的AspectJ切入点指示符如下：
+
+​     **execution：**用于匹配符合的方法；
+
+​     **within：**用于匹配指定的类及其子类中的所有方法。
+
+​     **this：**匹配可以向上转型为this指定的类型的代理对象中的所有方法。
+
+​     **target：**匹配可以向上转型为target指定的类型的目标对象中的所有方法。
+
+​     **args：**用于匹配运行时传入的参数列表的类型为指定的参数列表类型的方法；
+
+​     **@annotation：**用于匹配持有指定注解的方法；
+
+​     **@within：**用于匹配持有指定注解的类的所有方法；
+
+​     **@target：**用于匹配持有指定注解的目标对象的所有方法；
+
+​     **@args：**用于匹配运行时 传入的参数列表的类型持有 注解列表对应的注解 的方法；
+
+​     
+
+​    AspectJ切入点支持的切入点指示符还有： call、get、set、preinitialization、staticinitialization、initialization、handler、adviceexecution、withincode、cflow、cflowbelow、if、@this、@withincode；但Spring AOP目前不支持这些指示符，使用这些指示符将抛出IllegalArgumentException异常。这些指示符Spring AOP可能会在以后进行扩展。
 
 来了解下AspectJ类型匹配的通配符：
 
