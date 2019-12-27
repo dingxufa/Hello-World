@@ -1,3 +1,10 @@
+---
+typora-copy-images-to:./picture/myP/
+---
+
+
+
+
 地址：
 
 > python
@@ -24,7 +31,6 @@
 
  https://mp.weixin.qq.com/s/WwjicbYtcjRNDgj2bRuOoQ 
 
- 
 
  https://github.com/xuxueli/xxl-job 
 
@@ -591,6 +597,28 @@ public class NetUtils {
             <version>1.1.11</version>
         </dependency>
 
+
+ <!-- jdbc -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
+        </dependency>
+        <!-- mysql驱动 -->
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+        </dependency>
+        <!--AOP-->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        <!--jpa-->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
+
 ```
 
 
@@ -627,8 +655,70 @@ location /channel {
 } 
 
 upstream http_payment_channel_servers{
-        server 192.168.10.51:8083;
+    server 192.168.10.51:8083;
 	server 192.168.30.238:8083;
+}
+
+
+
+server {
+        listen       80 default_server;
+        server_name  www.morganliao.com;
+        # Load configuration files for the default server block.
+        include /etc/nginx/default.d/*.conf;
+        
+        location / {
+          root      /usr/share/nginx/html;
+          index index.html index.htm index.php;
+        }
+       location ~ \.php?.*$ {
+         include fastcgi.conf;
+         fastcgi_pass 127.0.0.1:9000;
+         fastcgi_index index.php;
+         fastcgi_split_path_info  ^(.+\.php)(/.+)$;
+         fastcgi_param  PATH_INFO $fastcgi_path_info;
+         fastcgi_param  PATH_TRANSLATED $document_root$fastcgi_path_info;
+         fastcgi_param  SCRIPT_FILENAME $document_root$fastcgi_script_name;
+      }
+        error_page 404 /404.html;
+            location = /40x.html {
+        }
+        error_page 500 502 503 504 /50x.html;
+            location = /50x.html {
+        }
+    }
+    
+   server {
+        listen       80;
+        server_name  www.xiaosq.com;
+        location / {
+          index index.html;
+          proxy_pass http://127.0.0.1:8081/;
+        }
+    }
+
+        
+   #https监听443端口，访问过来时，会通过配置的证书保证https的安全性     
+   server {
+       listen       443;
+       server_name  www.xiaosq.com;
+       ssl on;
+       ssl_certificate "/etc/nginx/conf.d/1952263_www.xiaosq.com_public.crt";
+       ssl_certificate_key "/etc/nginx/conf.d/1952263_www.xiaosq.com.key";
+       ssl_session_cache shared:SSL:1m;
+       ssl_session_timeout  10m;
+       ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:HIGH:!aNULL:!MD5:!RC4:!DHE;
+       ssl_prefer_server_ciphers on;
+        
+       # https://www.xiaosq.com/
+       location / {
+              index index.html;
+                  proxy_pass http://127.0.0.1:8081/; 
+        		  #如果Tomcat或者springboot中配置了项目名或访问路径，则这里也要在/后加上  
+        		  #server.servlet.context-path=dddd 	proxy_pass http://127.0.0.1:8081/dddd; 
+       }
+	}
+
 }
 ```
 
@@ -959,7 +1049,7 @@ upstream http_payment_channel_servers{
 
 
 
-# 😈elasticsearch
+# 😈 elasticsearch
 
  
 
@@ -1222,7 +1312,7 @@ public class Aspect1 {
 
 在一个方法只被一个aspect类拦截时，aspect类内部的 advice 将按照以下的顺序进行执行：
 
-![one-ok](C:/Users/Administrator/Documents/book/pic/summary/AOP执行流程.jpg)
+![one-ok](picture/myP/AOP执行流程-1577267801836.jpg)
 
 
 
@@ -2133,9 +2223,9 @@ public class AopTargetUtils {
 
 ```
 
-![1554102319962](../AppData/Roaming/Typora/typora-user-images/1554102319962.png)
+![1554102319962](./picture/myP/1554102319962.png)
 
-![1554102378461](../AppData/Roaming/Typora/typora-user-images/1554102378461.png)
+![1554102378461](./picture/myP//1554102378461.png)
 
 
 
@@ -2190,6 +2280,18 @@ String[] names = NAME_SEPARATOR.split(value);
 
 
 
+```java
+
+JSONArray.toJSONString(List)
+    
+Gson gson = new Gson();    
+gson.fromJson(targetClass.class)
+```
+
+
+
+
+
 
 
 
@@ -2214,6 +2316,13 @@ if ("getParameters".equals(name)// Map public getParameters()
         && Modifier.isPublic(method.getModifiers())
         && method.getParameterTypes().length == 0
         && method.getReturnType() == Map.class)
+    
+    
+//the method may be IFoo.bar() and the target class may be DefaultFoo. In this case, the method may be DefaultFoo.bar(). This enables attributes on that method to be found.    
+Method specificMethod = ClassUtils.getMostSpecificMethod(method, targetClass);  
+
+//返回给定方法的全限定名  interface/class name + "." + method name. 
+ClassUtils.getQualifiedMethodName(specificMethod);
 ```
 
 
@@ -2940,7 +3049,11 @@ public class EmployeeTest {
  @Log4j ：注解在类上；为类提供一个 属性名为log 的 log4j 日志对象 
  @NoArgsConstructor：注解在类上；为类提供一个无参的构造方法 
  @AllArgsConstructor：注解在类上；为类提供一个全参的构造方法 
- @Cleanup：关闭流 @Synchronized：对象同步 @SneakyThrows：抛出异常
+ @Cleanup：关闭流 @Synchronized：对象同步 @SneakyThrows：抛出异
+
+ @ToString.Exclude
+
+ @Enumerated(EnumType.STRING)
 
 
 
@@ -3094,6 +3207,33 @@ public class Person {
 
 
 
+## 主从同步以及异常处理
+
+1. 异步复制
+
+   异步复制，主库将事务Binlog事件写入到Binlog文件中，此时主库只会通知下Dump线程发送这些新的bInlog，然后主库将会继续处理提交操作，而此时不会保证这样BInlog传到任何一个从库节点上。
+
+2. 全同步复制
+
+   全同步复制，当主库提交事务后，所有的从库节点必须收到，apply并且提交这些事务，apply并且提交这些事务，然后主库线程才能继续做后续操作，但缺点是是主库完成一个事务的时间会被拉长，性能降低。
+
+3. 半同步复制
+
+   是介于全同步复制与全异步复制之间的一种，主库只需要等待至少一个从库节点收到并且Flush Binlog到repply log才可以，主库不需要等待所有从库给主库反馈，同时，这里只是一个收到的反馈，而不是已经完全完成并且提交的反馈，如此，节省了很多时间，。
+
+
+
+主从复制异常处理
+
+1. 主从故障值主键冲突，错误代码为1062
+
+   问题描述:由于误操作，在从库上执行了写操作，导致 再在主库执行相同操作时，由于主键冲突，主从复制状态会报错，所以在生产环境上，建议在从库上开启read only状态，避免从库执行写操作。
+   可以通过percona-tookit工具几种的pt-slave-restart命令在从库跳过去。
+
+2. 主从故障值主库更新数据，从库找不到而报错，错误代码 1032
+
+   从库上少数据，根据报错信息找到缺失的数据（多个从库，有部分从库主从复制时未成功）
+
 
 
 # 😈 MQ
@@ -3120,7 +3260,7 @@ public class Person {
 
 看这么个场景。A 系统发送数据到 BCD 三个系统，通过接口调用发送。如果 E 系统也要这个数据呢？那如果 C 系统现在不需要了呢？A 系统负责人几乎崩溃......
 
-![mq-1](C:/Users/Administrator/Documents/book/pic/summary/mq-1.png)
+![mq-1](picture/myP/mq-1-1577267972451.png)
 
 
 
@@ -3128,7 +3268,7 @@ public class Person {
 
 如果使用 MQ，A 系统产生一条数据，发送到 MQ 里面去，哪个系统需要数据自己去 MQ 里面消费。如果新系统需要数据，直接从 MQ 里消费即可；如果某个系统不需要这条数据了，就取消对 MQ 消息的消费即可。这样下来，A 系统压根儿不需要去考虑要给谁发送数据，不需要维护这个代码，也不需要考虑人家是否调用成功、失败超时等情况。
 
-![mq-2](C:/Users/Administrator/Documents/book/pic/summary/mq-2.png)
+![mq-2](picture/myP/mq-2-1577267975730.png)
 
 **总结**：通过一个 MQ，Pub/Sub 发布订阅消息这么一个模型，A 系统就跟其它系统彻底解耦了。
 
@@ -3140,7 +3280,7 @@ public class Person {
 
 
 
-![mq-3](C:/Users/Administrator/Documents/book/pic/summary/mq-3.png)
+![mq-3](picture/myP/mq-3-1577267978082.png)
 
 
 
@@ -3150,7 +3290,7 @@ public class Person {
 
 如果**使用 MQ**，那么 A 系统连续发送 3 条消息到 MQ 队列中，假如耗时 5ms，A 系统从接受一个请求到返回响应给用户，总时长是 3 + 5 = 8ms，对于用户而言，其实感觉上就是点个按钮，8ms 以后就直接返回了，爽！网站做得真好，真快！
 
-![mq-4](C:/Users/Administrator/Documents/book/pic/summary/mq-4.png)
+![mq-4](picture/myP/mq-4-1577267986594.png)
 
 #### 削峰
 
@@ -3160,13 +3300,13 @@ public class Person {
 
 但是高峰期一过，到了下午的时候，就成了低峰期，可能也就 1w 的用户同时在网站上操作，每秒中的请求数量可能也就 50 个请求，对整个系统几乎没有任何的压力。
 
-![mq-5](C:/Users/Administrator/Documents/book/pic/summary/mq-5.png)
+![mq-5](picture/myP/mq-5-1577267988745.png)
 
 
 
 如果使用 MQ，每秒 5k 个请求写入 MQ，A 系统每秒钟最多处理 2k 个请求，因为 MySQL 每秒钟最多处理 2k 个。A 系统从 MQ 中慢慢拉取请求，每秒钟就拉取 2k 个请求，不要超过自己每秒能处理的最大请求数量就 ok，这样下来，哪怕是高峰期的时候，A 系统也绝对不会挂掉。而 MQ 每秒钟 5k 个请求进来，就 2k 个请求出去，结果就导致在中午高峰期（1 个小时），可能有几十万甚至几百万的请求积压在 MQ 中。
 
-![mq-6](C:/Users/Administrator/Documents/book/pic/summary/mq-6.png)
+![mq-6](picture/myP/mq-6-1577267990922.png)
 
 这个短暂的高峰期积压是 ok 的，因为高峰期过了之后，每秒钟就 50 个请求进 MQ，但是 A 系统依然会按照每秒 2k 个请求的速度在处理。所以说，只要高峰期一过，A 系统就会快速将积压的消息给解决掉。
 
@@ -3232,7 +3372,7 @@ public class Person {
 
 
 
-![img](C:/Users/Administrator/Documents/book/pic/summary/16a8ca53a6eaad0e.jpg)
+![img](picture/myP/16a8ca53a6eaad0e-1577267994981.jpg)
 
 
 
@@ -3240,7 +3380,7 @@ public class Person {
 
 那就让**每个消费者都是一个独立的消费组，这样每条消息都会发送给所有的消费组**，每个消费组里那唯一的一个消费者一定会消费到所有的消息。
 
-![img](C:/Users/Administrator/Documents/book/pic/summary/16a8ca538b2c77fa.jpg)
+![img](picture/myP/16a8ca538b2c77fa-1577267997788.jpg)
 
 但是除此之外，Kafka就没有任何其他的消费功能了，就是如此简单，所以属于一种比较暴力直接的流派。**它就是简单的消费模型，实现最基础的Queue和Pub/Sub两种消费模型，但是内核中大幅度优化和提升了性能以及吞吐量**。所以Kafka天生适合的场景，就是大数据领域的实时数据计算的场景。因为**在大数据的场景下，通常是弱业务的场景**，没有太多复杂的业务系统交互，而主要是大量的数据流入Kafka，然后进行实时计算。所以就是需要简单的消费模型，但是必须在内核中对吞吐量和性能进行大幅度的优化。因此Kafka技术通常是在大数据的实时数据计算领域中使用的，比如说**每秒处理几十万条消息，甚至每秒处理上百万条消息。**
 
@@ -3250,11 +3390,11 @@ public class Person {
 
 第二个流派，就是RabbitMQ为代表的流派，**他强调的不是说如何提升性能和吞吐量，关注的是说要提供非常强大、复杂而且完善的消息路由功能**。所以对于RabbitMQ而言，他就不是那么简单的Topic-Partition的消费模型了。在RabbitMQ中引入了一个非常核心的概念，叫做Exchange，这个**Exchange就是负责根据复杂的业务规则把消息路由到内部的不同的Queue里去**。举个例子，如果要实现最简单的队列功能，就是让exchange往一个queue里写数据，然后多个消费者来消费这个queue里的数据，每条消息只能给一个消费者，那么可以是类似下面的方式。
 
-![img](C:/Users/Administrator/Documents/book/pic/summary/16a8ca53a6c4d47c.jpg)
+![img](picture/myP/16a8ca53a6c4d47c-1577268000145.jpg)
 
 **如果想要实现Pub/Sub的模型，就是一条消息要被所有的消费者给消费到，那么就可以让每个消费者都有一个自己的Queue，然后绑定到一个Exchange上去。接着，这个Exchange就设定把消息路由给所有的Queue即可**，如下面这样。此时Exchange可以把每条消息都路由给所有的Queue，每个Consumer都可以从自己的Queue里拿到所有的消息。
 
-![img](C:/Users/Administrator/Documents/book/pic/summary/16a8ca53a6b7de77.jpg)
+![img](picture/myP/16a8ca53a6b7de77-1577268005399.jpg)
 
 RabbitMQ这种流派，**其实最核心的是，基于Exchange这个概念**，他可以做很多复杂的事情。比如：**如果你想要某个Consumer只能消费到某一类数据，那么Exchange可以把消息里比如带“XXX”前缀的消息路由给某个Queue**。或者你可以限定某个Consumer就只能消费某一部分数据。总之在这里你可以做很多的限制，设置复杂的路由规则。但是也正是因为引入了这种复杂的消费模型，**支持复杂的路由功能**，导致RabbitMQ在内核以及架构设计上没法像Kafka做的那么的轻量级、高性能、可扩展、高吞吐，所以**RabbitMQ在吞吐量上要比Kafka低一个数量级**。所以这种流派的MQ，**往往适合用在Java业务系统中，不同的业务系统需要进行复杂的消息路由**。
 
@@ -3266,7 +3406,7 @@ ZeroMQ代表的是第三种MQ。说白了，他是**不需要在服务器上部�
 
 他主要是**用来进行业务系统之间的网络通信的**，有点类似于比如你是一个分布式系统架构，那么此时分布式架构中的**各个子系统互相之间要通信**，你是基于Dubbo RPC？还是Spring Cloud HTTP？可能上述两种你都不想要，就是要基于原始的Socket进行网络通信，简单的收发消息而已。此时就可以使用ZeroMQ作为分布式系统之间的消息通信，如下面那样。
 
-![img](C:/Users/Administrator/Documents/book/pic/summary/16a8ca53a6d187c4.jpg)
+![img](picture/myP/16a8ca53a6d187c4-1577268007696.jpg)
 
 #### 总结
 
@@ -3291,7 +3431,7 @@ ZeroMQ代表的是第三种MQ。说白了，他是**不需要在服务器上部�
 
 比如下面的图里就是表明了对于**每一个Topic，我们都可以设置它包含几个Partition，每个Partition负责存储这个Topic一部分的数据**。然后Kafka的Broker集群中，每台机器上都存储了一些Partition，也就存放了Topic的一部分数据，这样就实现了Topic的数据分布式存储在一个Broker集群上。
 
-![img](C:/Users/Administrator/Documents/book/pic/summary/16a4acc392f74f75.jpg)
+![img](picture/myP/16a4acc392f74f75-1577268010956.jpg)
 
 
 
@@ -3301,7 +3441,7 @@ ZeroMQ代表的是第三种MQ。说白了，他是**不需要在服务器上部�
 
 所以如果大家去分析任何一个分布式系统的原理，比如说zookeeper、kafka、redis cluster、elasticsearch、hdfs，等等，其实他都有自己内部的一套**多副本冗余的机制**，多副本冗余几乎是现在任何一个优秀的分布式系统都一般要具备的功能。在kafka集群中，每个Partition都有多个副本，其中一个副本叫做leader，其他的副本叫做follower，如下图。
 
-![img](C:/Users/Administrator/Documents/book/pic/summary/16a4acc4c8841d25.jpg)
+![img](picture/myP/16a4acc4c8841d25-1577268013258.jpg)
 
 如上图所示，假设一个Topic拆分为了3个Partition，分别是Partition0，Partiton1，Partition2，此时每个Partition都有2个副本。比如Partition0有一个副本是Leader，另外一个副本是Follower，Leader和Follower两个副本是分布在不同机器上的。这样的**多副本冗余机制，可以保证任何一台机器挂掉，都不会导致数据彻底丢失**，因为起码还是有副本在别的机器上的。
 
@@ -3311,7 +3451,7 @@ ZeroMQ代表的是第三种MQ。说白了，他是**不需要在服务器上部�
 
 着我们就来看看多个副本之间数据是如何同步的？其实任何一个Partition，**只有Leader是对外提供读写服务**的也就是说，如果有一个客户端往一个Partition写入数据，此时一般就是写入这个Partition的Leader副本。然后Leader副本接收到数据之后，**Follower副本会不停的给他发送请求尝试去拉取最新的数据，拉取到自己本地后，写入磁盘中**。如下图所示：
 
-![img](C:/Users/Administrator/Documents/book/pic/summary/16a4acc60c2439a7.jpg)
+![img](picture/myP/16a4acc60c2439a7-1577268015546.jpg)
 
 
 
@@ -3325,7 +3465,7 @@ ZeroMQ代表的是第三种MQ。说白了，他是**不需要在服务器上部�
 
 铺垫了那么多的东西，最后终于可以进入主题来聊一下acks参数的含义了。如果大家没看明白前面的那些副本机制、同步机制、ISR机制，那么就无法充分的理解acks参数的含义，这个参数实际上决定了很多重要的东西。**首先这个acks参数，是在KafkaProducer，也就是生产者客户端里设置的**。也就是说，你往kafka写数据的时候，就可以来设置这个acks参数。然后这个参数实际上有三种常见的值可以设置，分别是：0、1 和 all。第一种选择是把acks参数设置为0，意思就是我的KafkaProducer在客户端，只要把消息发送出去，不管那条数据有没有在哪怕Partition Leader上落到磁盘，我就不管他了，直接就认为这个消息发送成功了。如果你采用这种设置的话，那么你必须注意的一点是，可能你发送出去的消息还在半路。结果呢，Partition Leader所在Broker就直接挂了，然后结果你的客户端还认为消息发送成功了，此时就会**导致这条消息就丢失了。**
 
-![img](C:/Users/Administrator/Documents/book/pic/summary/16a4acc77f81499b.jpg)
+![img](picture/myP/16a4acc77f81499b-1577268017855.jpg)
 
 
 
@@ -3333,13 +3473,13 @@ ZeroMQ代表的是第三种MQ。说白了，他是**不需要在服务器上部�
 
 第二种选择是设置 acks = 1，意思就是说只要**Partition Leader接收到消息而且写入本地磁盘了，就认为成功了，不管他其他的Follower有没有同步过去这条消息了**。这种设置其实是kafka**默认的设置**，大家请注意，划重点！==这是默认的设置==也就是说，默认情况下，你要是不管acks这个参数，只要Partition Leader写成功就算成功。但是这里有一个问题，**万一Partition Leader刚刚接收到消息，Follower还没来得及同步过去，结果Leader所在的broker宕机了，此时也会导致这条消息丢失，因为人家客户端已经认为发送成功了。**
 
-![img](C:/Users/Administrator/Documents/book/pic/summary/16a4acc8dbd29971.jpg)
+![img](picture/myP/16a4acc8dbd29971-1577268020204.jpg)
 
 
 
 最后一种情况，就是设置acks=all，这个意思就是说，**Partition Leader接收到消息之后，还必须要求ISR列表里跟Leader保持同步的那些Follower都要把消息同步过去，才能认为这条消息是写入成功了。**如果说Partition Leader刚接收到了消息，但是结果Follower没有收到消息，此时Leader宕机了，那么客户端会感知到这个消息没发送成功，他会重试再次发送消息过去。此时可能Partition 2的Follower变成Leader了，此时ISR列表里只有最新的这个Follower转变成的Leader了，那么只要这个新的Leader接收消息就算成功了。
 
-![img](C:/Users/Administrator/Documents/book/pic/summary/16a4acca5969bc88.jpg)
+![img](picture/myP/16a4acca5969bc88-1577268022020.jpg)
 
 
 
@@ -3361,7 +3501,7 @@ Kafka 实际上有个 offset 的概念，就是每个消息写进去，都有一
 
 有这么个场景。数据 1/2/3 依次进入 kafka，kafka 会给这三条数据每条分配一个 offset，代表这条数据的序号，我们就假设分配的 offset 依次是 152/153/154。消费者从 kafka 去消费的时候，也是按照这个顺序去消费。假如当消费者消费了 `offset=153` 的这条数据，刚准备去提交 offset 到 zookeeper，此时消费者进程被重启了。那么此时消费过的数据 1/2 的 offset 并没有提交，kafka 也就不知道你已经消费了 `offset=153` 这条数据。那么重启之后，消费者会找 kafka 说，嘿，哥儿们，你给我接着把上次我消费到的那个地方后面的数据继续给我传递过来。由于之前的 offset 没有提交成功，那么数据 1/2 会再次传过来，如果此时消费者没有去重的话，那么就会导致重复消费。
 
-![mq-10](C:/Users/Administrator/Documents/book/pic/summary/mq-10.png)
+![mq-10](picture/myP/mq-10-1577268024814.png)
 
 如果消费者干的事儿是拿一条数据就往数据库里写一条，会导致说，你可能就把数据 1/2 在数据库里插入了 2 次，那么数据就错啦。
 
@@ -3382,7 +3522,7 @@ Kafka 实际上有个 offset 的概念，就是每个消息写进去，都有一
 - 比如你不是上面两个场景，那做的稍微复杂一点，你需要让生产者发送每条数据的时候，里面加一个全局唯一的 id，类似订单 id 之类的东西，然后你这里消费到了之后，先根据这个 id 去比如 Redis 里查一下，之前消费过吗？如果没有消费过，你就处理，然后这个 id 写 Redis。如果消费过了，那你就别处理了，保证别重复处理相同的消息即可。
 - 比如基于数据库的唯一键来保证重复数据不会重复插入多条。因为有唯一键约束了，重复数据插入只会报错，不会导致数据库中出现脏数据。
 
-![mq-11](C:/Users/Administrator/Documents/book/pic/summary/mq-11.png)
+![mq-11](picture/myP/mq-11-1577268027516.png)
 
 当然，如何保证 MQ 的消费是幂等性的，需要结合具体的业务来看。
 
@@ -3400,11 +3540,11 @@ Kafka 0.8 以前，是没有 HA 机制的，就是任何一个 broker 宕机了�
 
 比如说，我们假设创建了一个 topic，指定其 partition 数量是 3 个，分别在三台机器上。但是，如果第二台机器宕机了，会导致这个 topic 的 1/3 的数据就丢了，因此这个是做不到高可用的。
 
-![kafka-before](C:/Users/Administrator/Documents/book/pic/summary/kafka-before.png)
+![kafka-before](picture/myP/kafka-before-1577268029814.png)
 
 Kafka 0.8 以后，提供了 HA 机制，就是 replica（复制品） 副本机制。每个 partition 的数据都会同步到其它机器上，形成自己的多个 replica 副本。所有 replica 会选举一个 leader 出来，那么生产和消费都跟这个 leader 打交道，然后其他 replica 就是 follower。写的时候，leader 会负责把数据同步到所有 follower 上去，读的时候就直接读 leader 上的数据即可。只能读写 leader？很简单，**要是你可以随意读写每个 follower，那么就要 care 数据一致性的问题**，系统复杂度太高，很容易出问题。Kafka 会均匀地将一个 partition 的所有 replica 分布在不同的机器上，这样才可以提高容错性。
 
-![kafka-after](C:/Users/Administrator/Documents/book/pic/summary/kafka-after.png)
+![kafka-after](picture/myP/kafka-after-1577268031855.png)
 
 这么搞，就有所谓的**高可用性**了，因为如果某个 broker 宕机了，没事儿，那个 broker上面的 partition 在其他机器上都有副本的。如果这个宕机的 broker 上面有某个 partition 的 leader，那么此时会从 follower 中**重新选举**一个新的 leader 出来，大家继续读写那个新的 leader 即可。这就有所谓的高可用性了。
 
@@ -3458,7 +3598,7 @@ Kafka 0.8 以后，提供了 HA 机制，就是 replica（复制品） 副本机
 - **Kafka**：比如说我们建了一个 topic，有三个 partition。生产者在写的时候，其实可以指定一个 key，比如说我们指定了某个订单 id 作为 key，那么这个订单相关的数据，一定会被分发到同一个 partition 中去，而且这个 partition 中的数据一定是有顺序的。
   消费者从 partition 中取出来数据的时候，也一定是有顺序的。到这里，顺序还是 ok 的，没有错乱。接着，我们在消费者里可能会搞**多个线程来并发处理消息**。因为如果消费者是单线程消费处理，而处理比较耗时的话，比如处理一条消息耗时几十 ms，那么 1 秒钟只能处理几十条消息，这吞吐量太低了。而多个线程并发跑的话，顺序可能就乱掉了。
 
-![kafka-order-01](C:/Users/Administrator/Documents/book/pic/summary/kafka-order-01.png)
+![kafka-order-01](picture/myP/kafka-order-01-1577268035609.png)
 
 解决方案
 
@@ -3469,7 +3609,7 @@ Kafka
 - 一个 topic，一个 partition，一个 consumer，内部单线程消费，单线程吞吐量太低，一般不会用这个。
 - 写 N 个内存 queue，具有相同 key 的数据都到同一个内存 queue；然后对于 N 个线程，每个线程分别消费一个内存 queue 即可，这样就能保证顺序性。
 
-![kafka-order-02](C:/Users/Administrator/Documents/book/pic/summary/kafka-order-02.png)
+![kafka-order-02](picture/myP/kafka-order-02-1577268038523.png)
 
 
 
@@ -3491,7 +3631,7 @@ RabbitMQ 有三种模式：单机模式、普通集群模式、镜像集群模�
 
 普通集群模式，意思就是在多台机器上启动多个 RabbitMQ 实例，每个机器启动一个。你**创建的 queue，只会放在一个 RabbitMQ 实例上**，但是每个实例都同步 queue 的元数据（元数据可以认为是 queue 的一些配置信息，通过元数据，可以找到 queue 所在实例）。你消费的时候，实际上如果连接到了另外一个实例，那么那个实例会从 queue 所在实例上拉取数据过来。
 
-![mq-7](C:/Users/Administrator/Documents/book/pic/summary/mq-7.png)
+![mq-7](picture/myP/mq-7-1577268041899.png)
 
 这种方式确实很麻烦，也不怎么好，**没做到所谓的分布式**，就是个普通集群。因为这导致你要么消费者每次随机连接一个实例然后拉取数据，要么固定连接那个 queue 所在实例消费数据，前者有**数据拉取的开销**，后者导致**单实例性能瓶颈**。
 
@@ -3505,7 +3645,7 @@ RabbitMQ 有三种模式：单机模式、普通集群模式、镜像集群模�
 
 这种模式，才是所谓的 RabbitMQ 的高可用模式。跟普通集群模式不一样的是，在镜像集群模式下，你创建的 queue，无论元数据还是 queue 里的消息都会**存在于多个实例上**，就是说，每个 RabbitMQ 节点都有这个 queue 的一个**完整镜像**，包含 queue 的全部数据的意思。然后每次你写消息到 queue 的时候，都会自动把**消息同步**到多个实例的 queue 上。
 
-![mq-8](C:/Users/Administrator/Documents/book/pic/summary/mq-8.png)
+![mq-8](picture/myP/mq-8-1577268044520.png)
 
 那么**如何开启这个镜像集群模式**呢？其实很简单，RabbitMQ 有很好的管理控制台，就是在后台新增一个策略，这个策略是**镜像集群模式的策略**，指定的时候是可以要求数据同步到所有节点的，也可以要求同步到指定数量的节点，再次创建 queue 的时候，应用这个策略，就会自动将数据同步到其他的节点上去了。
 
@@ -3521,7 +3661,7 @@ RabbitMQ 有三种模式：单机模式、普通集群模式、镜像集群模�
 
 数据的丢失问题，可能出现在生产者、MQ、消费者中，咱们从 RabbitMQ 和 Kafka 分别来分析一下吧。
 
-![rabbitmq-message-lose](C:/Users/Administrator/Documents/book/pic/summary/rabbitmq-message-lose.png)
+![rabbitmq-message-lose](picture/myP/rabbitmq-message-lose-1577268046992.png)
 
 
 
@@ -3583,7 +3723,7 @@ RabbitMQ 如果丢失了数据，主要是因为你消费的时候，**刚消费
 
 
 
-![rabbitmq-message-lose-solution](C:/Users/Administrator/Documents/book/pic/summary/rabbitmq-message-lose-solution.png)
+![rabbitmq-message-lose-solution](picture/myP/rabbitmq-message-lose-solution-1577268050608.png)
 
 
 
@@ -3595,7 +3735,7 @@ RabbitMQ 如果丢失了数据，主要是因为你消费的时候，**刚消费
 
 - **RabbitMQ**：一个 queue，多个 consumer。比如，生产者向 RabbitMQ 里发送了三条数据，顺序依次是 data1/data2/data3，压入的是 RabbitMQ 的一个内存队列。有三个消费者分别从 MQ 中消费这三条数据中的一条，结果消费者2先执行完操作，把 data2 存入数据库，然后是 data1/data3。这不明显乱了。
 
-![rabbitmq-order-01](C:/Users/Administrator/Documents/book/pic/summary/rabbitmq-order-01.png)
+![rabbitmq-order-01](picture/myP/rabbitmq-order-01-1577268053160.png)
 
 解决方案
 
@@ -3603,7 +3743,7 @@ RabbitMQ
 
 拆分多个 queue，每个 queue 一个 consumer，就是多一些 queue 而已，确实是麻烦点；或者就一个 queue 但是对应一个 consumer，然后这个 consumer 内部用内存队列做排队，然后分发给底层不同的 worker 来处理。
 
-![rabbitmq-order-02](C:/Users/Administrator/Documents/book/pic/summary/rabbitmq-order-02.png)
+![rabbitmq-order-02](picture/myP/rabbitmq-order-02-1577268055308.png)
 
 
 
@@ -3947,7 +4087,7 @@ channel.addConfirmListener(new ConfirmListener() {
 
  与其他池化技术不同的是，线程池是基于==生产者-消费者==模式来实现的，***\*任务的提交方是生产者，线程池是消费者\****。当我们需要执行某个任务时，只需要把任务扔到线程池中即可。线程池中执行任务的流程如下图如下。
 
-  ![](C:/Users/Administrator/Documents/book/pic/summary/threadpool1-1574502090924.jpg) 
+  ![](picture/myP/threadpool1-1574502090924.jpg) 
 
  
 
@@ -4168,7 +4308,7 @@ channel.addConfirmListener(new ConfirmListener() {
 
  与其他池化技术不同的是，线程池是基于==生产者-消费者==模式来实现的，***\*任务的提交方是生产者，线程池是消费者\****。当我们需要执行某个任务时，只需要把任务扔到线程池中即可。线程池中执行任务的流程如下图如下。
 
-  ![](C:/Users/Administrator/Documents/book/pic/summary/threadpool1-1574502090924.jpg) 
+  ![](picture/myP/threadpool1-1574502090924-1577268073448.jpg) 
 
  
 
@@ -4418,7 +4558,7 @@ public ThreadPoolExecutor(int corePoolSize,
 
  与其他池化技术不同的是，线程池是基于==生产者-消费者==模式来实现的，***\*任务的提交方是生产者，线程池是消费者\****。当我们需要执行某个任务时，只需要把任务扔到线程池中即可。线程池中执行任务的流程如下图如下。
 
-  ![](C:/Users/Administrator/Documents/book/pic/summary/threadpool1-1574502090924.jpg) 
+  ![](picture/myP/threadpool1-1574502090924-1577268080738.jpg) 
 
  
 
@@ -4618,7 +4758,7 @@ public class Test {
 
  与其他池化技术不同的是，线程池是基于==生产者-消费者==模式来实现的，***\*任务的提交方是生产者，线程池是消费者\****。当我们需要执行某个任务时，只需要把任务扔到线程池中即可。线程池中执行任务的流程如下图如下。
 
-  ![](C:/Users/Administrator/Documents/book/pic/summary/threadpool1-1574502090924.jpg) 
+  ![](picture/myP/threadpool1-1574502090924-1577268086110.jpg) 
 
 
 
@@ -4695,7 +4835,7 @@ public ThreadPoolExecutor(int corePoolSize,
      
      在线程池中，使用了一个原子类***\*AtomicInteger的变量来表示线程池状态和线程数量\****，该变量在内存中会占用4个字节，也就是32bit，其中***\*高3位用来表示线程池的状态，低29位用来表示线程的数量\****。线程池的状态一共有5中状态，用3bit最多可以表示8种状态，因此采用高3位来表示线程池的状态完全能满足需求。示意图如下。
 
- ![çº¿ç¨æ± ç¶æè®¾è®¡](C:/Users/Administrator/Documents/book/pic/summary/threadpool2.jpg) 
+ ![çº¿ç¨æ± ç¶æè®¾è®¡](picture/myP/threadpool2.jpg) 
 
 
 
@@ -5190,7 +5330,7 @@ public List<Runnable> shutdownNow() {
 
 
 
-# 😈Concurrency
+# 😈 Concurrency
 
 ### SynchronousQueue
 
@@ -5573,7 +5713,7 @@ put         添加一个元素                       如果队列满，则阻塞
 
 
 
-![](C:/Users/Administrator/Documents/book/pic/summary/9snowflake-64bit.jpg)
+![](picture/myP/9snowflake-64bit-1577268127227.jpg)
 
 Twitter_Snowflake<br>
  * SnowFlake的结构如下(每部分用-分开):<br>
@@ -6228,7 +6368,7 @@ public @PostConstruct void someMethod(){}
 
 被@PostConstruct修饰的方法会在服务器加载Servlet的时候运行，**并且只会被服务器执行一次**。**PostConstruct在构造函数之后执行，init（）方法之前执行。PreDestroy（）方法在destroy（）方法之后执行**
 
-![](C:/Users/Administrator/Documents/book/pic/summary/PostConstruct.webp)
+![](picture/myP/PostConstruct-1577268142546.webp)
 
 
 
@@ -6902,7 +7042,456 @@ public class LoginController {
 
 
 
-# 😈 spring
+# 😈 Spring
+
+## AOP
+
+Spring Aop 中有两种动态代理，分别是JDK动态代理和Cglib动态代理，前者是基于接口，后者是基于继承
+
+
+
+Wildcard
+*： 匹配任意数量的字符
++：匹配制定数量的类及其子类
+..：一般用于匹配任意数量的子包或参数
+
+
+
+Operators
+&&：与操作符
+||：或操作符
+!：非操作符
+
+
+
+**1. within()**
+
+```java
+//匹配productService类中的所有方法
+@pointcut("within(com.sample.service.productService)")
+public void matchType()
+
+//匹配sample包及其子包下所有类的方法
+@pointcut("within(com.sample..*)")
+public void matchPackage()
+```
+
+
+
+**2. 匹配对象（this, target, bean）**
+
+>
+>
+>this(AType) means all join points where this instanceof AType is true. So this means that in your case once the call reaches any method of Service this instanceof Service will be true.
+>
+>this(Atype)意思是连接所有`this.instanceof(AType) == true`的点，所以这意味着，`this.instanceof(Service)` 为真的Service实例中的，所有方法被调用时。
+>
+>target(AType) means all join points where anObject instanceof AType . If you are calling a method on an object and that object is an instanceof Service, that will be a valid joinpoint.
+>
+>target(AType)意思是连接所有`anObject.instanceof(AType)`。如果你调用一个Object中的一个方法，且这个object是Service的实例，则这是一个合法的切点。
+> To summarize a different way - this(AType) is from a receivers perspective, and target(AType) is from a callers perspective.
+>
+>总结：this(AType)同接受者方面描述，target(AType)则从调用者方面描述
+
+- this
+
+  ```java
+  @pointcut("this(com.sample.demoDao)")
+  public void thisDemo()
+  ```
+
+- target
+
+  ```java
+  @pointcut("target(com.sample.demoDao)")
+  public void targetDemo()
+  ```
+
+- bean
+
+  ```java
+  //匹配所有以Service结尾的bean里面的方法
+  @pointcut("bean(*Service)")
+  public void beanDemo
+  ```
+
+  
+
+**3. 参数匹配**
+
+- bean
+
+```kotlin
+//匹配所有以find开头，且只有一个Long类型参数的方法
+@pointcut("execution(* *..find*(Long))")
+public void argDemo1()
+
+//匹配所有以find开头，且第一个参数类型为Long的方法
+@pointcut("execution(* *..find*(Long, ..))")
+public void argDemo2()
+```
+
+- arg
+
+```kotlin
+@pointcut("arg(Long)")
+public void argDemo3()
+
+@pointcut("arg(Long, ..)")
+public void argDemo4()
+```
+
+
+
+**4. 匹配注解**
+
+- @annotation
+
+```java
+//匹配注解有AdminOnly注解的方法
+@pointcut("@annotation(com.sample.security.AdminOnly)")
+public void demo1()
+```
+
+- @within
+
+```java
+//匹配标注有admin的类中的方法，要求RetentionPolicy级别为CLASS
+@pointcut("@within(com.sample.annotation.admin)")
+public void demo2()
+```
+
+- @target
+
+```java
+//注解标注有Repository的类中的方法，要求RetentionPolicy级别为RUNTIME
+@pointcut("target(org.springframework.stereotype.Repository)")
+public void demo3()
+```
+
+- @args
+
+```java
+//匹配传入参数的类标注有Repository注解的方法
+@pointcut("args(org.springframework.stereotype.Repository)")
+public void demo3()
+```
+
+**5. execution()**
+
+格式：
+
+> execution(<修饰符模式>? <返回类型模式> <方法名模式>(<参数模式>) <异常模式>?)
+>
+> 标注❓的项目表示着可以省略
+
+
+
+```tsx
+execution(
+    modifier-pattern?  //修饰符
+    ret-type-pattern  //返回类型
+    declaring-type-pattern?  //方法模式
+    name-pattern(param-pattern)  //参数模式
+    throws-pattern?  //异常模式
+)
+
+/*
+整个表达式可以分为五个部分：
+
+ 1、execution(): 表达式主体。
+
+ 2、第一个*号：表示返回类型，*号表示所有的类型。
+
+ 3、包名：表示需要拦截的包名，后面的两个句点表示当前包和当前包的所有子包，com.sample.service.impl包、子孙包下所有类的方法。
+
+ 4、第二个*号：表示类名，*号表示所有的类。
+
+ 5、*(..):最后这个星号表示方法名，*号表示所有的方法，后面括弧里面表示方法的参数，两个句点表示任何参数。
+*/
+@pointcut("execution(* com.sample.service.impl..*.*(..))")
+```
+
+
+
+
+
+### aop切入点表达式
+
+```xml
+：匹配任何数量字符；
+..：匹配任何数量字符的重复，如在类型模式中匹配任何数量子包；而在方法参数模式中匹配任何数量参数。
++：匹配指定类型的子类型；仅能作为后缀放在类型模式后边。
+java.lang.String 匹配String类型；
+java..String 匹配java包下的任何“一级子包”下的String类型；
+如匹配java.lang.String，但不匹配java.lang.ss.String
+java..* 匹配java包及任何子包下的任何类型;
+如匹配java.lang.String、java.lang.annotation.Annotation
+java.lang.*ing 匹配任何java.lang包下的以ing结尾的类型；
+java.lang.Number+ 匹配java.lang包下的任何Number的自类型；
+如匹配java.lang.Integer，也匹配java.math.BigInteger
+
+
+1、切入点表达式：对指定的方法进行拦截，并且生成代理表达式。
+2、拦截所有public方法
+<aop:pointcut expression="execution(public * *(..))"id="pt"/>
+3、拦截所有save开头的方法
+<aop:pointcut expression="execution(* save*(..))" id="pt"/>
+4、拦截指定类的指定方法
+<aop:pointcut expression="execution(public * 包名.类名.方法名(..))" id="pt"/>
+5、拦截指定类的所有方法
+<aop:pointcut expression="execution(* 包名.类名.*(..))"id="pt"/>
+6、拦截指定包，以及其自包下所有类的所有方法
+<aop:pointcut expression="execution(* cn..*.*(..))"id="pt"/>
+7、多个表达式
+<aop:pointcut expression="execution(* 包名.类名.方法名(..)) || execution(* 包名.类名（不同的类）.方法名(..))"id="pt"/>
+<aop:pointcut expression="execution(* 包名.类名.方法名(..)) or execution(* 包名.类名（不同的类）.方法名(..))"id="pt"/>
+8、取非值
+<aop:pointcut expression="!execution(* 包名.类名.方法名(..))"id="pt"/>
+<aop:pointcut expression=" not execution(* 包名.类名.方法名(..))"id="pt"/>
+
+
+
+
+
+
+
+1、切入点表达式：对指定的方法进行拦截，并且生成代理表达式。
+
+2、拦截所有public方法
+<aop:pointcut expression="execution(public * *(..))" id="pt"/>
+
+3、拦截所有save开头的方法
+<aop:pointcut expression="execution(* save*(..))" id="pt"/>
+
+4、拦截指定类的指定方法
+<aop:pointcut expression="execution(public * 包名.类名.方法名(..))" id="pt"/>
+
+5、拦截指定类的所有方法
+<aop:pointcut expression="execution(* 包名.类名.*(..))" id="pt"/>
+
+6、拦截指定包，以及其自包下所有类的所有方法
+<aop:pointcut expression="execution(* cn..*.*(..))" id="pt"/>
+
+7、多个表达式
+<aop:pointcut expression="execution(* 包名.类名.方法名()) || execution(* 包名.类名（不同的类）.方法名())" id="pt"/>
+<aop:pointcut expression="execution(* 包名.类名.方法名()) or execution(* 包名.类名（不同的类）.方法名())" id="pt"/>
+
+8、取非值
+<aop:pointcut expression="!execution(* 包名.类名.方法名())" id="pt"/>
+<aop:pointcut expression=" not execution(* 包名.类名.方法名())" id="pt"/>
+　　
+```
+
+
+
+注解声明
+
+```java
+public class PointCuts {
+    @Pointcut(value = "within(test.*)")
+    public void aopDemo() {
+ 
+    }
+}
+
+@Component
+@Aspect
+public class Aspect1 {
+ 
+    @Before(value = "test.PointCuts.aopDemo()")
+    public void before(JoinPoint joinPoint) {
+        System.out.println("[Aspect1] before advise");
+    }
+ 
+    @Around(value = "test.PointCuts.aopDemo()")
+    public void around(ProceedingJoinPoint pjp) throws  Throwable{
+        System.out.println("[Aspect1] around advise 1");
+        pjp.proceed();
+        System.out.println("[Aspect1] around advise2");
+    }
+ 
+    @AfterReturning(value = "test.PointCuts.aopDemo()")
+    public void afterReturning(JoinPoint joinPoint) {
+        System.out.println("[Aspect1] afterReturning advise");
+    }
+ 
+    @AfterThrowing(value = "test.PointCuts.aopDemo()")
+    public void afterThrowing(JoinPoint joinPoint) {
+        System.out.println("[Aspect1] afterThrowing advise");
+    }
+ 
+    @After(value = "test.PointCuts.aopDemo()")
+    public void after(JoinPoint joinPoint) {
+        System.out.println("[Aspect1] after advise");
+    }
+}
+```
+
+![one-ok](picture/myP/AOP%E6%89%A7%E8%A1%8C%E6%B5%81%E7%A8%8B.jpg)
+
+
+
+
+
+
+
+关于AOP无法切入同类调用方法的问题
+
+```java
+public class Service {
+ 
+/**
+ * 被Controller调用的方法
+ * 这个方法调用被切的方法
+*/
+ public void callMethodA() {
+    ......
+    callMethodB();
+    ......
+}
+ 
+/**
+ * Aop切入的方法
+*/
+ public void callMethodB() {
+	......
+ }
+}
+
+
+
+/**
+ * AOP的实现
+*/
+public class Aspect {
+ 
+ @AfterReturning("execution(* Service.callMethodB(..)))
+ public void after() {
+	 Logger.info("after call and do something.");
+ }
+}
+
+
+```
+
+
+
+调用callMethodA，在callMethodA中调用callMethodB，无法切入.  callMethodA()中callMethodB()方法调用，实际是this.callMethodB() 而aop实际是创建了代理对象，通多代理对象调用callMethodB()，因而当直接调用callMethodA()时，并没有获取代理对象，所以aop无效
+
+
+
+被拦截的类的方法执行其实是通过由spring为该类生成的代理类调用指定方法实现的，如下：
+ServiceProxy serviceProxy;
+serviceProxy.callMethodA();
+而**在callMethodA方法内部再调用callMethodB()，其实是this.callMethodB(),这个this是Service的对象，即被代理的对象，而不是代理对象（serviceProxy）**
+其实任何的拦截，都是依赖“代理”这种机制实现的，在真正调用方法的前后执行拦截操作，既然不是通过代理对象调用的，自然就失去了拦截的能力，故没有嵌套拦截的能力
+
+
+
+
+
+解决方法：
+
+1.避免嵌套调用
+
+2.嵌套调用时获取代理的对象  
+
+1. 通过Spring提供的ProxyFactoryBean来获取被拦截类的代理类的对象，然后发起调用，此时就能被拦截到了
+2. AopContext.currentProxy()获取代理对象
+
+```java
+public class Service {
+    public void callMethodA() {
+	......
+	 ((Service) AopContext.currentProxy()).callMethodB();
+	......
+	}
+} 
+
+Springboot 
+@EnableAspectJAutoProxy(exposeProxy = true)
+public class Main {}
+
+```
+
+
+
+如果是通过xml配置或当前springboot版本不支持
+
+可以配置一个aop.xml文件，文件内容如下：
+
+```java
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+           http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+           http://www.springframework.org/schema/aop
+           http://www.springframework.org/schema/aop/spring-aop-3.0.xsd">
+ 
+    <aop:aspectj-autoproxy proxy-target-class="true" expose-proxy="true"/>
+ 
+</beans>
+```
+
+然后在ApplicationMain中添加注解如下：
+@ImportResource(locations = "aop.xml")
+
+```java
+public class ProxyConfig implements Serializable {
+    // 这个参数是用来控制当前是否指定只使用Cglib代理
+    private boolean proxyTargetClass = false;
+
+    // 标记是否对代理进行优化。启动优化通常意味着在代理对象被创建后，增强的修改将不会生效，因此默认值为false。
+    // 如果exposeProxy设置为true，即使optimize为true也会被忽略。
+    private boolean optimize = false;
+    
+    // 标记是否需要阻止通过该配置创建的代理对象转换为Advised类型，默认值为false，表示代理对象可以被转换为Advised类型
+    boolean opaque = false;
+
+    // 标记代理对象是否应该被aop框架通过AopContext以ThreadLocal的形式暴露出去。
+    // 当一个代理对象需要调用它自己的另外一个代理方法时，这个属性将非常有用。默认是是false，以避免不必要的拦截。
+    boolean exposeProxy = false;
+
+    // 标记该配置是否需要被冻结，如果被冻结，将不可以修改增强的配置。
+    // 当我们不希望调用方修改转换成Advised对象之后的代理对象时，这个配置将非常有用。
+    private boolean frozen = false;
+}
+
+```
+
+
+
+我们需要关注的就是 exposeProxy 属性，如果这个属性值 true，那么 Spring 在代理的时候就会将当前这个代理对象放在 ThreadLoacl 中，我们在使用fun1方法的时候，调用fun2就可以改为：
+
+```java
+public void fun1(){
+    System.out.println("fun1 ...");
+    ((OrderService)AopContext.currentProxy()).fun2();
+}
+```
+
+点开 AopContext.currentProxy() 对象无非就是从 ThreadLoacl 中获取。**需要注意的是，如果采用这种方式，但是没有设置 exposeProxy = true，那么会抛出 IllegalStateException 异常。**
+
+
+
+
+
+
+
+
+
+参考：
+
+[关于AOP无法切入同类调用方法的问题](https://www.cnblogs.com/fanguangdexiaoyuer/p/7620534.html)
+
+[AOP方法嵌套调用为何失效和解决方案](https://blog.csdn.net/Liu_York/article/details/86681933)
+
+
+
+
 
 ## 自定义ArgumentResolver
 
@@ -7146,6 +7735,50 @@ springboot 配置filter
 
 
 
+## spring bean生命周期
+
+
+
+Spring管理Bean(或者说Bean的生命周期)也是一个**常考**的知识点，我在秋招也**重新**整理了一下步骤，因为比较重要，所以还是在这里贴一下吧：
+
+1. ResouceLoader加载配置信息
+2. BeanDefintionReader解析配置信息，生成一个一个的BeanDefintion
+3. BeanDefintion由BeanDefintionRegistry管理起来
+4. BeanFactoryPostProcessor对配置信息进行加工(也就是处理配置的信息，一般通过PropertyPlaceholderConfigurer来实现)
+5. 实例化Bean
+6. 如果该Bean`配置/实现`了InstantiationAwareBean，则调用对应的方法
+7. 使用BeanWarpper来完成对象之间的属性配置(依赖)
+8. 如果该Bean`配置/实现了`Aware接口，则调用对应的方法
+9. 如果该Bean配置了BeanPostProcessor的before方法，则调用
+10. 如果该Bean配置了`init-method`或者实现InstantiationBean，则调用对应的方法
+11. 如果该Bean配置了BeanPostProcessor的after方法，则调用
+12. 将对象放入到HashMap中
+13. 最后如果配置了destroy或者DisposableBean的方法，则执行销毁操作
+
+
+
+![Application中Bean的声明周期](picture/myP/16898da73ad54b64)
+
+
+
+其中也有关于BPP图片：
+
+
+
+![BBP所在的位置](picture/myP/16898da73c9a92d8)
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # 😈 springboot
@@ -7281,7 +7914,7 @@ Java Caching定义了5个核心接口，分别是CachingProvider, CacheManager, 
 
 如下图所示:
 
-![img](C:/Users/Administrator/Documents/book/pic/summary/jsr107.jpg)
+![img](picture/myP/jsr107-1577268167845.jpg)
 
 
 
@@ -7298,23 +7931,23 @@ Spring从3.1开始定义了org.springframework.cache.Cache和org.springframework
 1. 确定方法需要被缓存以及他们的缓存策略  
 2. 从缓存中读取之前缓存存储的数据
 
-![img](C:/Users/Administrator/Documents/book/pic/summary/spring缓存抽象.jpg)
+![img](picture/myP/spring缓存抽象-1577268170648.jpg)
 
 
 
 ### 3.缓存注解
 
-![img](C:/Users/Administrator/Documents/book/pic/summary/spring cache缓存注解1.jpg)
+![img](picture/myP/spring cache缓存注解1-1577268173349.jpg)
 
 
 
-![img](C:/Users/Administrator/Documents/book/pic/summary/spring cache缓存注解2.jpg)
+![img](picture/myP/spring cache缓存注解2-1577268176252.jpg)
 
 
 
 同样支持spel表达式
 
-![img](C:/Users/Administrator/Documents/book/pic/summary/spring cache缓存注解3.jpg)
+![img](picture/myP/spring cache缓存注解3-1577268183438.jpg)
 
 
 
@@ -7322,7 +7955,7 @@ Spring从3.1开始定义了org.springframework.cache.Cache和org.springframework
 
 针对不同的缓存技术，需要实现不同的CacheManager ,spring 定义了如下表的CacheManager实现。
 
-![img](C:/Users/Administrator/Documents/book/pic/summary/spring CacheManager.jpg)
+![img](picture/myP/spring CacheManager-1577268185943.jpg)
 
 
 
