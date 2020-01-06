@@ -45,7 +45,7 @@ io多路复用的实现方式select poll epoll
 
 
 [root@VM_0_12_centos ~]# touch /etc/yum.repos.d/nginx.repo
-[root@VM_0_12_centos ~]# vim /etc//yum.repos.d/nginx.repo 
+[root@VM_0_12_centos ~]# vim /etc/yum.repos.d/nginx.repo 
 
 ```
 [nginx-stable]
@@ -83,7 +83,7 @@ rpm -ql nginx
 | 路径                                                         | 类型         | 作用                                       |
 | ------------------------------------------------------------ | ------------ | ------------------------------------------ |
 | /etc/logrotate.d/nginx                                       | 配置文件     | nginx日志轮转，用于logrotate服务的日志切割 |
-| /etc/nginx  /etc/nginx/nginx.conf                        /etc/nginx/conf.d /etc/nginx/conf.d/default.conf | 目录配置文件 | nginx主配置文件                            |
+| /etc/nginx/etc/nginx/nginx.conf                        /etc/nginx/conf.d /etc/nginx/conf.d/default.conf | 目录配置文件 | nginx主配置文件                            |
 | /usr/sbin/nginx /usr/sbin/nginx-debug                        | 命令         | nginx服务的启动管理的终端命令              |
 | /var/cache/nginx                                             | 目录         | nginx缓存目录                              |
 | /var/log/nginx                                               |              | nginx日志目录                              |
@@ -221,7 +221,7 @@ arg_PARAMETER   http_HEADER  send_http_HEADER
 
 
 
-http_sub_status_module模块配置
+http_stub_status_module模块配置
 
 syntax:   stub_status;
 

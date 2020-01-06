@@ -618,6 +618,12 @@ public class NetUtils {
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
 
+<!-- Jmockdata 模拟JAVA类型或对象的实例化并随机初始化对象的数据的工具框架-->            
+<dependency>
+     <groupId>com.github.jsonzou</groupId>
+     <artifactId>jmockdata</artifactId>
+     <version>4.1.2</version>
+   </dependency>            
 
 ```
 
@@ -1456,6 +1462,56 @@ public void fun1(){
 [关于AOP无法切入同类调用方法的问题](https://www.cnblogs.com/fanguangdexiaoyuer/p/7620534.html)
 
 [AOP方法嵌套调用为何失效和解决方案](https://blog.csdn.net/Liu_York/article/details/86681933)
+
+
+
+### 获取代理对象
+
+```java
+[Maven: org.springframework:spring-aop:4.3.10.RELEASE] org.springframework.aop.support public abstract class AopUtils extends Object
+public static  Object getTarget(Object proxy) throws Exception{
+    if(!AopUtils.isAopProxy(proxy)){
+        return proxy;
+    }
+    if(AopUtils.isJdkDynamicProxy(proxy)){
+        return getJdkDynamicProxyTargetObject(proxy);
+    }else{
+        return getCglibProxyTargetObject(proxy);
+    }
+}
+private static Object getCglibProxyTargetObject(Object proxy) throws Exception {
+      Field h = proxy.getClass().getDeclaredField("CGLIB$CALLBACK_0");
+      h.setAccessible(true);
+      Object dynamicAdvisedInterceptor = h.get(proxy);
+
+      Field advised = dynamicAdvisedInterceptor.getClass().getDeclaredField("advised");
+      advised.setAccessible(true);
+
+      Object target = ((AdvisedSupport)advised.get(dynamicAdvisedInterceptor)).getTargetSource().getTarget();
+
+      return target;
+  }
+
+
+private static Object getJdkDynamicProxyTargetObject(Object proxy) throws Exception {
+    Field h = proxy.getClass().getSuperclass().getDeclaredField("h");
+    h.setAccessible(true);
+    AopProxy aopProxy = (AopProxy) h.get(proxy);
+
+    Field advised = aopProxy.getClass().getDeclaredField("advised");
+    advised.setAccessible(true);
+
+    Object target = ((AdvisedSupport)advised.get(aopProxy)).getTargetSource().getTarget();
+
+    return target;
+}
+```
+
+
+
+### 
+
+
 
 
 
@@ -2323,6 +2379,41 @@ Method specificMethod = ClassUtils.getMostSpecificMethod(method, targetClass);
 
 //返回给定方法的全限定名  interface/class name + "." + method name. 
 ClassUtils.getQualifiedMethodName(specificMethod);
+
+
+
+
+
+//从加载类的路径查找所有指定名称的资源
+ClassLoader.getSystemResources(path)
+ClassUtils.getDefaultClassLoader()
+public static ClassLoader getDefaultClassLoader() {
+	ClassLoader cl = null;
+	try {
+        //获取当前线程的类加载器
+		cl = Thread.currentThread().getContextClassLoader();
+	}
+	catch (Throwable ex) {
+		// Cannot access thread context ClassLoader - falling back...
+	}
+	if (cl == null) {
+		// No thread context class loader -> use class loader of this class.
+        // 获取ClassUtils类的类加载器
+		cl = ClassUtils.class.getClassLoader();
+		if (cl == null) {
+			// getClassLoader() returning null indicates the bootstrap ClassLoader
+			try {
+                //获取bootstrap类加载器
+				cl = ClassLoader.getSystemClassLoader();
+			}
+			catch (Throwable ex) {
+				// Cannot access system ClassLoader - oh well, maybe the caller can live with null...
+			}
+		}
+	}
+	return cl;
+}
+    
 ```
 
 
@@ -3086,6 +3177,16 @@ public class Person {
         System.out.println(Person.builder().name("111"));
     }
 }
+
+case1:
+@Builder
+@NoArgsConstructor
+public class Person {
+new Person(); 会报错
+Error:(10, 1) java: 无法将类 com.lvmama.pay.channel.biz.core.bank.Chinapay.ChinaPayWithholdDTO中的构造器 ChinaPayWithholdDTO应用到给定类型;
+  需要: 没有参数
+  找到: version$se[...]ion(),busiType$s[...]ype(),java.lang.String,tranType$s[...]ype(),java.lang.String,java.lang.String,java.lang.String,java.lang.String,java.lang.String,java.lang.String,java.lang.String,java.lang.String,java.lang.String,java.lang.String
+  原因: 实际参数列表和形式参数列表长度不同    
  ```
 
 
@@ -3153,6 +3254,109 @@ public class Person {
 
 
 
+### 基于单Redis节点的分布式锁
+
+1. 获取锁
+
+   首先，Redis客户端为了**获取锁**，向Redis节点发送如下命令：
+
+   ```redis
+   SET resource_name my_random_value NX PX 30000
+   ```
+
+   上面的命令如果执行成功，则客户端成功获取到了锁，接下来就可以**访问共享资源**了；而如果上面的命令执行失败，则说明获取锁失败。
+
+   注意，在上面的`SET`命令中：
+
+   - `my_random_value`是由客户端生成的一个随机字符串，它要保证在足够长的一段时间内在所有客户端的所有获取锁的请求中都是唯一的。
+   - `NX`表示只有当`resource_name`对应的key值不存在的时候才能`SET`成功。这保证了只有第一个请求的客户端才能获得锁，而其它客户端在锁被释放之前都无法获得锁。
+   - `PX 30000`表示这个锁有一个30秒的自动过期时间。当然，这里30秒只是一个例子，客户端可以选择合适的过期时间。
+
+
+
+2. 释放锁
+
+   当客户端完成了对共享资源的操作之后，执行下面的Redis Lua脚本来**释放锁**：
+
+   ```lua
+   if redis.call("get",KEYS[1]) == ARGV[1] then
+       return redis.call("del",KEYS[1])
+   else
+       return 0
+   end
+   ```
+
+   这段Lua脚本在执行的时候要把前面的`my_random_value`作为`ARGV[1]`的值传进去，把`resource_name`作为`KEYS[1]`的值传进去。
+
+
+
+3. 获取锁失败的处理
+
+   一般有 3 种策略来处理加锁失败：
+
+   1. 直接抛出异常，通知用户稍后重试；
+   2. sleep 一会再重试；
+   3. 将请求转移至延时队列，过一会再试；
+
+
+
+
+
+#### 问题以及注意
+
+- 这个锁必须要设置一个过期时间。
+
+  否则的话，当一个客户端获取锁成功之后，假如它崩溃了，或者由于发生了网络分割（network partition）导致它再也无法和Redis节点通信了，那么它就会一直持有这个锁，而其它客户端永远无法获得锁了。（即必须设置  PX 锁过期时间）
+
+- 第一步**获取锁**的操作不可以分割成两个单独的操作
+
+  ```
+  SETNX resource_name my_random_value
+  EXPIRE resource_name 30
+  ```
+
+  虽然这两个命令和前面算法描述中的一个`SET`命令执行效果相同，但却不是原子的。如果客户端在执行完`SETNX`后崩溃了，那么就没有机会执行`EXPIRE`了，导致它一直持有这个锁。
+
+- 设置一个随机字符串`my_random_value`是很有必要的，它保证了**一个客户端释放的锁必须是自己持有的那个锁**。
+
+  假如获取锁时`SET`的不是一个随机字符串，而是一个固定值，那么可能会发生下面的执行序列：
+
+  1. 客户端1获取锁成功。
+  2. 客户端1在某个操作上阻塞了很长时间。
+  3. 过期时间到了，锁自动释放了。
+  4. 客户端2获取到了对应同一个资源的锁。
+  5. 客户端1从阻塞中恢复过来，释放掉了客户端2持有的锁。
+
+  之后，客户端2在访问共享资源的时候，就没有锁为它提供保护了。
+
+- 释放锁的操作必须使用Lua脚本来实现。
+
+  释放锁其实包含三步操作：’GET’、判断和’DEL’，用Lua脚本来实现能保证这三步的原子性。否则，如果把这三步操作放到客户端逻辑中去执行的话，就有可能发生与前面第三个问题类似的执行序列：
+
+  1. 客户端1获取锁成功。
+  2. 客户端1访问共享资源。
+  3. 客户端1为了释放锁，先执行’GET’操作获取随机字符串的值。
+  4. 客户端1判断随机字符串的值，与预期的值相等。
+  5. 客户端1由于某个原因阻塞住了很长时间。
+  6. 过期时间到了，锁自动释放了。
+  7. 客户端2获取到了对应同一个资源的锁。
+  8. 客户端1从阻塞中恢复过来，执行`DEL`操纵，释放掉了客户端2持有的锁。
+
+前面的四个问题，只要实现分布式锁的时候加以注意，就都能够被正确处理。但除此之外，antirez还指出了一个问题，``是由failover引起的，却是基于单Redis节点的分布式锁无法解决的``。
+
+这个问题是这样的。假如Redis节点宕机了，那么所有客户端就都无法获得锁了，服务变得不可用。为了提高可用性，我们可以给这个Redis节点挂一个Slave，当Master节点不可用的时候，系统自动切到Slave上（failover）。但由于Redis的主从复制（replication）是异步的，这可能导致在failover过程中丧失锁的安全性。考虑下面的执行序列：
+
+1. 客户端1从Master获取了锁。
+2. Master宕机了，存储锁的key还没有来得及同步到Slave上。
+3. Slave升级为Master。
+4. 客户端2从新的Master获取到了对应同一个资源的锁。
+
+于是，客户端1和客户端2同时持有了同一个资源的锁。锁的安全性被打破。
+
+
+
+
+
 # 😈 mysql
 
  1.常用命令
@@ -3207,7 +3411,7 @@ public class Person {
 
 
 
-## 主从同步以及异常处理
+### 主从同步以及异常处理
 
 1. 异步复制
 
@@ -3223,7 +3427,7 @@ public class Person {
 
 
 
-主从复制异常处理
+### 主从复制异常处理
 
 1. 主从故障值主键冲突，错误代码为1062
 
