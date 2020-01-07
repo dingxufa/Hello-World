@@ -1055,6 +1055,128 @@ server {
 
 
 
+
+
+# 😈 docker
+
+1. ### docker安装以及常用命令
+
+   ```shell
+   1.安装依赖
+   sudo yum install -y yum-utils  device-mapper-persistent-data lvm2
+   
+   2.安装docker
+   sudo yum install docker
+   
+   3.查看是否安装成功
+   docker version  、  docker info
+   
+   [root@VM_0_12_centos /]# docker version
+   Client:
+    Version:         1.13.1
+    API version:     1.26
+    Package version: 
+   Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?
+   如果报上述错误  service docker restart
+   
+   4.启动Docker-CE
+   sudo systemctl enable docker
+   sudo systemctl start docker
+   
+   
+   docker images 查看下主机下存在多少镜像
+   docker pull image_name
+   docker ps -a 当前有哪些容器在运行
+   docker search
+   
+   
+   对一个容器进行启动
+   docker start container_name/container_id
+   docker restart container_name/container_id
+   docker stop container_name/container_id
+   
+   docker attach container_name/container_id 进入到这个容器中
+   docker run -t -i container_name/container_id /bin/bash  运行这个容器中的镜像的话，并且调用镜像里面的 bash (-it 表示运行在交互模式，是-i -t的缩写，即-it是两个参数：-i和-t。前者表示打开并保持stdout，后者表示分配一个终端（pseudo-tty）一般这个模式就是可以启动bash，然后和容器有命令行的交互)
+   
+   退出容器
+   如果使用exit，命令退出，则容器的状态处于Exit，而不是后台运行。如果想让容器一直运行，而不是停止，可以使用快捷键 ctrl+p ctrl+q 退出，此时容器的状态为Up。
+   
+   软件装完，想保存环境 将容器转化为一个镜像，即执行commit操作，完成后可使用docker images查看
+   docker commit -m "ubuntu with vim" -a "sgy" aa97ba3292ce sgy/ubuntu:vim
+   -m指定说明信息；-a指定用户信息；aa97ba3292ce代表容器的id；sgy/ubuntu:vim指定目标镜像的用户名、仓库名和 tag 信息。
+   
+   想删除指定镜像的话，由于 image 被某个 container 引用（拿来运行），如果不将这个引用的 container 销毁（删除），那 image 肯定是不能被删除
+   1.停止这个容器
+   docker ps
+   docker stop container_name/container_id
+   2.删除这个容器  
+   docker rm container_name/container_id
+   3.删除这个镜像
+   docker rmi image_name
+   
+   
+   
+   
+   
+   docker pull library/hello-world
+   docker pull images 是抓取 image 文件， library/hello-world 是 image 文件在仓库里面的位置，其中 library 是 image 文件所在的组， hello-world 是 image 文件的名字。
+   docker run hello-world
+   
+   
+   在启动容器时，如果不配置宿主机器与虚拟机的端口映射，外部程序是无法访问虚拟机的，因为没有端口。
+   
+   docker指令：docker run  -p  ip:hostPort:containerPort  redis
+   使用-p参数  会分配宿主机的端口映射到虚拟机
+   3306:3306，映射本机的3306端口到虚拟机的3306端口
+   127.0.0.1:3306:3306，映射本机的3306端口到虚拟机的3306端口。
+   ```
+
+   
+
+  安装redis
+
+```shell
+
+docker search redis
+docker pull redis
+
+
+
+创建redis容器
+docker run --name redis -p 6379:6379 -v /opt/redis/data:/data  -d redis  --appendonly yes
+
+创建redis容器（指定配置文件）
+docker run --name redis -p 6379:6379 -v /opt/redis/conf:/etc/redis  -v /opt/redis/data:/data  -d redis  redis-server /etc/redis/redis.conf --appendonly yes
+
+-p 6379:6379　　//容器redis端口6379映射宿主主机6379
+--name redis　　//容器名字为redis
+-v /opt/redis/conf:/etc/redis  //docker镜像redis默认无配置文件，在宿主主机/opt/redis/conf创建redis.conf配置文件，会将宿主机的配置文件复制到docker中
+-v /opt/redis/data:/data 　//容器/data映射到宿主机/opt/redis/data下
+-d redis 　　//后台模式启动redis
+redis-server /etc/redis/redis.conf    //redis将以/etc/redis/redis.conf为配置文件启动
+--appendonly yes　　//开启redis的AOF持久化，默认为false，不持久化
+
+进入redis
+docker exec -it redis  redis-cli -h localhost -p 6379
+
+查看容器内部文件
+[root@VM_0_12_centos opt]# docker ps
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS                    NAMES
+c076222923e5        redis               "docker-entrypoint..."   6 minutes ago       Up 6 minutes        0.0.0.0:6379->6379/tcp   redis
+[root@VM_0_12_centos opt]# docker exec c0 cat /etc/redis/redis.conf   #c0 是容器id的简称
+
+```
+
+
+
+
+
+
+
+
+
+
+
 # 😈 elasticsearch
 
  
@@ -3297,6 +3419,22 @@ Error:(10, 1) java: 无法将类 com.lvmama.pay.channel.biz.core.bank.Chinapay.C
    1. 直接抛出异常，通知用户稍后重试；
    2. sleep 一会再重试；
    3. 将请求转移至延时队列，过一会再试；
+
+
+
+**直接抛出特定类型的异常**
+
+这种方式比较适合由用户直接发起的请求，用户看到错误对话框后，会先阅读对话框的内容，再点击重试，这样就可以起到人工延时的效果。如果考虑到用户体验，可以由前端的代码替代用户自己来进行延时重试控制。它本质上是对当前请求的放弃，由用户决定是否重新发起新的请求。
+
+**sleep**
+
+sleep 会阻塞当前的消息处理线程，会导致队列的后续消息处理出现延迟。如果碰撞的比较频繁或者队列里消息比较多，sleep 可能并不合适。如果因为个别死锁的 key 导致加锁不成功，线程会彻底堵死，导致后续消息永远得不到及时处理。
+
+**延时队列**
+
+这种方式比较适合异步消息处理，将当前冲突的请求扔到另一个队列延后处理以避开冲突。
+
+
 
 
 
