@@ -2,6 +2,36 @@
 typora-copy-images-to:./picture/myP/
 ---
 
+$e^{x^2}\neq{e^x}^2$     $(ex)^2$
+
+$$H(D_2) = -(\frac{2}{4}\ log_2 \frac{2}{4} + \frac{2}{4}\ log_2 \frac{2}{4}) = 1$$
+$$
+\begin{pmatrix}
+        1 & a_1 & a_1^2 & \cdots & a_1^n \\
+        1 & a_2 & a_2^2 & \cdots & a_2^n \\
+        \vdots & \vdots & \vdots & \ddots & \vdots \\
+        1 & a_m & a_m^2 & \cdots & a_m^n \\
+        \end{pmatrix}
+$$
+
+- [x] 任务1，已完成;
+- [x] 任务2，已完成;
+- [ ] 任务3，未完成; 
+
+
+
+
+
+<a href="#jump_1">来个页内跳转</a>，跳转到文未的：
+
+<span  style="font-size:1.3em;font-weight: bold;">改变字体大小，再来个粗体又如何？</span>
+
+<p style="text-align:center;color:#1e819e;font-size:1.3em;font-weight: bold;">
+来个综合的试试
+<br/>
+**[如果你觉得Md2All对你有帮助，欢迎赞赏](#jump_20)[^1]**
+
+
 
 
 
@@ -36,7 +66,7 @@ typora-copy-images-to:./picture/myP/
 
  zabbix
 
-针对分布式领域著名的CAP理论（C——数据一致性，A——服务可用性，P——服务对网络分区故障的容错性），***\*Zookeeper 保证的是CP ，但对于服务发现而言，可用性比数据一致性更加重要 ，而 Eureka 设计则遵循AP原则\**** 。
+针对分布式领域著名的CAP理论（C——数据一致性，A——服务可用性，P——服务对网络分区故障的容错性），**Zookeeper 保证的是CP ，但对于服务发现而言，可用性比数据一致性更加重要 ，而 Eureka 设计则遵循AP原则** 。
 
  😝 
 
@@ -55,6 +85,15 @@ typora-copy-images-to:./picture/myP/
  [Java 代码规约扫描插件 ](https://github.com/alibaba/p3c/wiki/IDEA插件使用文档)
 
 
+
+
+
+<a id="jump_1">我是页内跳转到的位置</a>
+
+[^10]: 注脚跳转位置
+
+<a id="jump_20"></a>
+###赞赏Md2All
 
 
 
@@ -96,6 +135,56 @@ typora-copy-images-to:./picture/myP/
   重启Python解释器，发现编码已被设置为utf8，与方案二同效；这是因为系统在Python启动的时候，自行调用该文件，设置系统的默认编码，而不需要每次都手动加上解决代码，属于一劳永逸的解决方法。
 
  
+
+```python
+import math
+import random
+
+# 算低位零的个数
+def low_zeros(value):
+    for i in range(1, 32):  #比如2（0010  0010>>2<<2!=2 所有0010只有2-1个低位0）
+        if value >> i << i != value:
+            break
+    return i - 1
+
+chars = ''.join([ chr(ord('a')+i) for i in range(26)]) #'abcdefghijklmnopqrstuvwxyz'
+def random_string(n):
+    chars = []
+    for i in range(n):
+        idx = random.randint(0, len(CHARS) - 1)
+        chars.append(CHARS[idx])
+    return ''.join(chars)
+
+
+
+redis连接
+
+import redis
+
+#直接连接
+redis_direct = redis.Redis(host="49.233.70.214", port=6379)
+
+#连接池的原理是, 通过预先创建多个连接, 当进行redis操作时, 直接获取已经创建的连接进行操作, 而且操作完成后, 不会释放, 用于后续的其他redis操作，
+# 这样就达到了避免频繁的redis连接创建和释放的目的, 从而提高性能。redis模块采用ConnectionPool来管理对redis server的所有连接。
+# redis_pool = redis.ConnectionPool(host="49.233.70.214", port=6379)
+# redis_client = redis.Redis(connection_pool=redis_pool)
+
+redis_direct.delete("codehole")
+for i in range(100000):
+    result = redis_direct.pfadd("codehole", "user%d" % i)
+    print("setp: add %s into codehole, result=%d,count=%d" % ("user%d" % i, result, redis_direct.pfcount("codehole")))
+    total = redis_direct.pfcount("codehole")
+    # print("current total=%d, i+1=%d , user%d" % (total,i+1,i))
+    if total != i+1:
+        print(total,i+1)
+        break
+```
+
+
+
+
+
+
 
 # 😈 Common
 
@@ -177,7 +266,16 @@ this.applicationContext.getBeansWithAnnotation(MessageListener.class);
      MethodSignature methodSignature = (MethodSignature) signature;
      Method targetMethod = methodSignature.getMethod();
        
- if(targetMethod.isAnnotationPresent(RateLimit.class)){    
+ if(targetMethod.isAnnotationPresent(RateLimit.class)){   
+     
+     
+RequestAttributes ra = RequestContextHolder.getRequestAttributes();
+ServletRequestAttributes sra = (ServletRequestAttributes) ra;
+HttpServletRequest request = sra.getRequest();
+String url = request.getRequestURL().toString();
+String method = request.getMethod();
+String uri = request.getRequestURI();
+String queryString = request.getQueryString();
 
  ```
 
@@ -623,7 +721,25 @@ public class NetUtils {
      <groupId>com.github.jsonzou</groupId>
      <artifactId>jmockdata</artifactId>
      <version>4.1.2</version>
-   </dependency>            
+   </dependency>
+            
+
+        <!-- xxl-job   -->
+        <dependency>
+            <groupId>com.xuxueli</groupId>
+            <artifactId>xxl-job-core</artifactId>
+            <version>1.8.1</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>javax.servlet</groupId>
+                    <artifactId>javax.servlet-api</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.springframework</groupId>
+                    <artifactId>spring-context</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>            
 
 ```
 
@@ -1043,6 +1159,20 @@ server {
  1.查看当前连接数
  netstat -n | awk '/^tcp/ {++S[$NF]} END {for (a in S) print a, S[a]}'
 
+
+安装rz sz
+
+[root@VM_0_12_centos redis]# yum list | grep sz
+laszip.x86_64                             2.2.0-4.el7                  epel     
+laszip-devel.x86_64                       2.2.0-4.el7                  epel     
+lrzsz.x86_64                              0.12.20-36.el7               os       
+[root@VM_0_12_centos redis]# yum -y  install lrzsz
+### 下载一个文件： 
+# sz filename 
+### 下载多个文件： 
+# sz filename1 filename2
+### 下载dir目录下的所有文件，不包含dir下的文件夹： 
+# sz dir/*
 ```
 
 
@@ -1133,7 +1263,7 @@ server {
 
    
 
-  安装redis
+2. 安装redis
 
 ```shell
 
@@ -1166,6 +1296,32 @@ c076222923e5        redis               "docker-entrypoint..."   6 minutes ago  
 [root@VM_0_12_centos opt]# docker exec c0 cat /etc/redis/redis.conf   #c0 是容器id的简称
 
 ```
+
+
+
+3. redis安装布隆过滤器
+
+```shell
+[root@VM_0_12_centos redis]# docker search rebloom
+INDEX       NAME                                      DESCRIPTION                                     STARS     OFFICIAL   AUTOMATED
+docker.io   docker.io/redislabs/rebloom               A probablistic datatypes module for Redis       6                    [OK]
+              
+[root@VM_0_12_centos redis]# docker pull redislabs/rebloom 
+
+docker run --name rebloom -p 6379:6379 redislabs/rebloom
+
+
+```
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1984,7 +2140,7 @@ public class Map2Object extends CustomMapper<Map, Object> {
 
 如二进制是           11111111  11111111  11111111  11110010
 
-得到反码减1         11111111  11111111  11111111   11110001
+得到反码减1         11111111  11111111  11111111  11110001
 
 原码：                  00000000  00000000  00000000   00001110
 
@@ -3264,6 +3420,8 @@ public class EmployeeTest {
  @AllArgsConstructor：注解在类上；为类提供一个全参的构造方法 
  @Cleanup：关闭流 @Synchronized：对象同步 @SneakyThrows：抛出异
 
+@ValidationF(type = ValidationF.Type.NotBlank, msgParam = {"履约状态"})
+
  @ToString.Exclude
 
  @Enumerated(EnumType.STRING)
@@ -3308,7 +3466,38 @@ new Person(); 会报错
 Error:(10, 1) java: 无法将类 com.lvmama.pay.channel.biz.core.bank.Chinapay.ChinaPayWithholdDTO中的构造器 ChinaPayWithholdDTO应用到给定类型;
   需要: 没有参数
   找到: version$se[...]ion(),busiType$s[...]ype(),java.lang.String,tranType$s[...]ype(),java.lang.String,java.lang.String,java.lang.String,java.lang.String,java.lang.String,java.lang.String,java.lang.String,java.lang.String,java.lang.String,java.lang.String
-  原因: 实际参数列表和形式参数列表长度不同    
+  原因: 实际参数列表和形式参数列表长度不同  
+      
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class AlipayTradeOrderInfoSyncReq extends BaseReq {
+
+    private static final long serialVersionUID = -5849152632121181488L;
+
+     enum SynInfoStatus{
+        COMPLETE, // COMPLETE(用户已履约)
+        VIOLATED;// VIOLATED 用户已违约
+    }
+
+    /**
+     * 支付宝交易号
+     */
+    @ValidationF(type = ValidationF.Type.NotBlank, msgParam = {"支付宝交易号"})
+    private String tradeNo;
+
+    /**
+     * 履约状态 默认为履约
+     */
+    @ValidationF(type = ValidationF.Type.NotBlank, msgParam = {"履约状态"})
+    @Builder.Default
+    private String status = SynInfoStatus.COMPLETE.name();
+
+
+}
+      
  ```
 
 
@@ -4218,6 +4407,18 @@ channel.addConfirmListener(new ConfirmListener() {
 #### 1.RocketMQ整体架构
 
 
+
+
+
+
+
+## ActiveMQ
+
+
+
+Activemq  也有延时队列吧，请问有什么优缺点
+
+由于ActiveMQ采用的是类似于Java中DelayQueue的方式，通过先将消息排序再定时触发的方式来实现延迟消息。在往队列中投递大量（10w+）定时消息之后，ActiveMQ的性能将会变得接近不可用，大量的消息挤压得不到投递。
 
 
 
@@ -7384,6 +7585,20 @@ public class LoginController {
 
 
 
+### @RequestBody
+
+
+
+参考： [@RequestBody的使用](https://blog.csdn.net/justry_deng/article/details/80972817)
+
+
+
+
+
+
+
+
+
 # 😈 Spring
 
 ## AOP
@@ -8697,3 +8912,9 @@ InputStream input1 = ExcelUtil.class.getResourceAsStream("/static" + resourceNam
 
 
   
+
+## YYYY时间错误
+
+`YYYY`是`week-based-year`，表示：当天所在的周属于的年份，一周从周日开始，周六结束，只要本周跨年，那么这周就算入下一年。所以2019年12月31日那天在这种表述方式下就已经 2020 年了。
+
+而当使用`yyyy`的时候，就还是 2019 年。
