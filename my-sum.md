@@ -1295,6 +1295,24 @@ CONTAINER ID        IMAGE               COMMAND                  CREATED        
 c076222923e5        redis               "docker-entrypoint..."   6 minutes ago       Up 6 minutes        0.0.0.0:6379->6379/tcp   redis
 [root@VM_0_12_centos opt]# docker exec c0 cat /etc/redis/redis.conf   #c0 是容器id的简称
 
+
+
+
+=================
+[root@VM_0_12_centos /]# docker exec -it redis redis-cli -h localhost -p 6379
+Error response from daemon: Container c076222923e5bd3a5381a6aef740ed0f2bb47e705f14975e3e05e622b1cad442 is not running
+[root@VM_0_12_centos /]# docker ps
+CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+[root@VM_0_12_centos /]# docker ps -a
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS                     PORTS               NAMES
+09ce28a337fd        redis               "docker-entrypoint..."   3 minutes ago       Exited (0) 3 minutes ago                       epic_keller
+e923e610a4e2        redislabs/rebloom   "docker-entrypoint..."   2 months ago        Exited (0) 2 months ago                        rebloom
+c076222923e5        redis               "docker-entrypoint..."   2 months ago        Exited (0) 8 minutes ago                       redis
+76258c44e40e        hello-world         "/hello"                 2 months ago        Exited (0) 2 months ago                        boring_pare
+[root@VM_0_12_centos /]# docker start redis
+redis
+
+
 ```
 
 
