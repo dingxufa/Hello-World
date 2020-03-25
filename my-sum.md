@@ -768,6 +768,36 @@ public class NetUtils {
 
 
 
+# 😈 git
+
+1. ssh: connect to host github.com port 22: Connection timed out
+
+```
+$ git pull origin master
+ssh: connect to host github.com port 22: Connection timed out
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+
+
+##########
+在用户/.ssh/目录下新建config文件
+Host github.com
+User git
+Hostname ssh.github.com
+PreferredAuthentications publickey
+IdentityFile ~/.ssh/id_rsa
+Port 443
+
+```
+
+
+
+
+
+
+
 # 😈 nginx
 
 ```nginx

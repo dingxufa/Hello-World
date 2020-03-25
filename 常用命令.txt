@@ -1,0 +1,289 @@
+
+15616034535@163.com
+15616034535
+342401199405184274
+/pay/payPos
+
+https://pay.lvmama.com/payment/pay/payPos.do
+https://pay.lvmama.com/payment/pay/sandPos.do
+
+1.dos
+	netstat -ano | findstr 8090
+	taskkill -f -pid 进程id
+	taskill /pid  pid 	 /F
+	
+	
+	super后台登陆不上的在cmd里执行 ipconfig /flushdns
+	
+	
+2.intellij
+		ctrl+q  		查看doc
+		/** 回车  		为方法生成param
+		ctrl+shift+/ 	/**/注释
+		shift+F6       全局重构
+		ctr+shift+u    upper
+		选中我即将抽取的代码，按快捷键Ctrl + Alt + M 
+		一键格式化代碼： Ctrl+Alt+L
+		
+
+ ctrl + alt +B  查找接口的实现类
+ ctrl + h       查看类或接口的继承关系
+
+3.java
+	javap -v C.class
+
+	
+5.git
+
+git remote -v
+
+git clone新项目后如何拉取分支代码到本地
+1、git clone git@git.n.xxx.com:xxx/xxx.git
+2、git fetch origin dev    命令来把远程dev分支拉到本地
+3、git checkout -b dev origin/dev   在本地创建分支dev并切换到该分支
+4、git pull origin dev 就可以把远程dev分支上的内容都拉取到本地了
+
+注：当本地代码是dev分支时，需要先 git pull origin dev 更新远程分支代码到本地，然后再git pull （即拉取远程master分支更新到本地），否则会有冲突。
+
+例如：将gitLab 上的dev分支拉取到本地
+
+1》与远程仓库建立连接：git remote add origin XXXXX.git
+2》使用git branch 查看本地是否具有dev分支
+3》如果没有 git fetch origin dev
+4》git checkout -b dev origin/dev在本地创建分支dev并切换到该分支
+5》git pull origin dev就可以把gitLab上dev分支上的内容都拉取到本地了
+
+
+git 合并到origin/master
+git branch -a
+1.dev: git pull origin dev
+2.checkout master
+3.master:git pull origin master
+4.master:git merge --no-ff dev
+5.master:git push origin master
+
+
+Check out, review, and merge locally 	
+Step 1. Fetch and check out the branch for this merge request
+
+git fetch origin
+git checkout -b weixinH5 origin/weixinH5
+Step 2. Review the changes locally
+
+Step 3. Merge the branch and fix any conflicts that come up
+
+git checkout master
+git merge --no-ff weixinH5
+Step 4. Push the result of the merge to GitLab
+
+git push origin master
+
+
+git fetch origin master:temp
+git diff
+typora设置视图宽度
+#write {
+    max-width: 2000px;
+}
+
+
+git merge temp
+git branch -D temp
+
+
+git diff master dev  --stat
+
+
+当某天因为觉得自己的分支太乱收拾不过来了，可能就会想到删掉重建一个相同的分支一了百了，然而问题才刚刚开始。
+你也许会发现，当你反复的 merge，pull 主分支之后， 从自己分支上提交到主分支的代码中还是会有一些莫名其妙的代码，也许是几个月前你曾提交过的，但是就是找不到原因，无论你如何的重复
+问题分析：
+
+原因就是你曾经删过该分支，导致之前的 A 分支（姑且称为 A`分支）和当前的 A 分支有断层，两者已经不是同一个了，所以向主分支提交代码的时候，会从远程的 origin/A`拉曾经的代码以及 A 分支上最新的代码合入到主分支上，会发现有一大片的 merge 冲突。
+问题解决：
+
+1.删除远程 origin/A 分支  git push origin --delete A
+2.删除本地 A 分支 ：git branch -d A
+3.创建本地 B 分支：git checkout -b B
+4.创建远程 B 分支：git push origin B:B
+5.将本地 B 分支改为 A 分支：git branch -m B A
+6.将远程的 B 分支改为 A 分支：git push origin A:A
+7.绑定本地 A 分支指向远程 A 分支：git branch --set-upstream-to= A origin/A （如果出现问题，执行 git remote update origin --prune 进行刷新）
+8.此时可以执行 git status，再根据提示进行命令输入也可。
+
+	 
+4.shell
+	find ./ -type f -name "*2028*" -exec print "" {}
+	service iptables status  	查看防火墙
+	service iptables start		开启防火墙
+	service iptables stop		关闭防火墙
+	/etc/init.d/iptables status	查看防火墙状态
+	/etc/init.d/iptables restart 重启iptables
+	/etc/init.d/iptables stop	暂时关闭防火墙 
+	
+	find . -name "*.java"|xargs cat|grep -v -e ^$ -e ^\s*\/\/.*$|wc -l
+	scp path username@ip path
+	linux下查看进程下的线程数: 可以先用 jps -l  查看应用的PID  通过 ps -Lf Pid | wc -l 来查看该Pid(进程）下的线程数
+	sudo $(echo $JAVA_HOME)/bin/jstack -l 29270
+
+	
+	du -shc *  查看各个文件占用磁盘空间
+
+[develop@server12-123 logs]$ sudo netstat -aonp | grep "61616"  查看监听61616端口的进程  
+tcp        0      0 :::61616                    :::*                        LISTEN      8349/java           off (0.00/0/0)
+tcp        0      0 ::ffff:10.200.5.148:36292   ::ffff:10.200.5.148:61616   ESTABLISHED 28182/java          off (0.00/0/0)
+tcp        0      0 ::ffff:10.200.5.148:61616   ::ffff:10.200.4.64:50614    ESTABLISHED 8349/java           off (0.00/0/0)
+tcp        0      0 ::ffff:10.200.5.148:36291   ::ffff:10.200.5.148:61616   ESTABLISHED 28182/java          off (0.00/0/0)
+[develop@server12-123 logs]$ ps -ef | grep "28182"
+
+
+	
+	
+	unzip -oq bank-icbc-war.war 		-d /opt/app/tomcat/bank-icbc/webapps/bank-icbc/
+	unzip -oq bank-wxpaynpub-war.war    -d /opt/app/tomcat/bank-wxpaynpub/webapps/bank-wxpaynpub/
+	
+	sh /opt/scm_tools/tomcat/tcruntime-ctl-new.sh bank-icbc restart
+	sh /opt/scm_tools/tomcat/tcruntime-ctl-new.sh bank-wxpaynpub  restart
+	
+	
+	sudo sh /opt/scm_tools/tomcat/tcruntime-ctl-new.sh bank-cpspay restart
+	
+	$ diff test test2 -y -W 40
+teteert                 teteert
+                   >    test2
+
+	
+	
+	prepend() { [ -d "$2" ] 
+
+ eval $1=\"$2':'\$$1\" 
+
+ export $1; }
+	
+	 test () { [ -d $2 ] 
+
+ eval $1="$2:\$$1" ; }
+		
+		find ./ -type f -name "*catalina*" -print0 | xargs -0 -I {} grep "10000141" --color=auto {} -C 10     70000008816
+		
+		find ./ -type f -name "catalina.out" -print0 | xargs -0 -I {} grep "10000141" --color=auto {} -C 10 
+		
+		curl -H "Content-Type:application/json" -X POST --data '{"orderNo":"10000141","paymentStatus":"success","payedAmount":"1"}'  http://www.yobab2b.com/weshoppay/pay/callback
+		-X 参数代表资源的请求类型
+		-H参数表示在请求头中附加的参数
+		-d参数表示需要上传的参数,需要上传文件时需要使用@file_name  curl -XPOST -H’Content-Type: application/json’ localhost:9200/family_person?pretty -d@data.json
+		
+		
+		
+		cd /opt/apache-tomcat-pay-service/logs/
+		
+		 cut -f1,2 -d";" log --output-delimiter "====>"
+		
+		grep "1000002805" --color=auto catalina.out 
+		grep "orderTopicListenerContainer" catalina.out  | grep "1000003143" 
+		
+		pet_payment [orderTopicListenerContainer-1] (TopicMessageConsumer.java:27) - Message{objectId=1000003143, objectType='ORD_ORDER', eventType='ORDER_TRANSFER_PAYMENT', addition='1000003143,1000003142,NS_ORDER,ORD_ORDER', systemType='null', trackNumber='null', parentAppName='null', distributedContextJson='null'} -- ActiveMQ.ORDER.payment[LvLogE TIME:"1543476296617" LVL:"INFO" APP:"pet_payment" PAPP:"" HOST:"testtech4-196" track:"2245a59f5ea15bd" CLASS:"com.lvmama.comm.jms.TopicMessageConsumer"]
+
+		
+		
+		find ./ -type f -name "*catalina*" -print0 | xargs -0 -I {} grep "1000002934" --color=auto {} -C 10
+
+		find ./ -type f -name "*app.properties*" -print0 | xargs -0 -I {} grep "1493724162" --color=auto {}
+		
+		
+		
+curl -H "Content-Type: application/json" -X POST  --data '{"orderNo"="10000127", "paymentStatus"="success", "payedAmount=1"}' http://weidian123456.wicp.net/weshoppay/pay/callback
+
+unzip -oq bank-wxpaynpub-war.war -d /opt/app/tomcat/bank-wxpaynpub/webapps/bank-wxpaynpub/
+sh /opt/scm_tools/tomcat/tcruntime-ctl-new.sh bank-wxpaynpub restart
+
+		
+		
+	curl -X POST --data '{transactionType=T, gateway=SAND_POS, ,submitOrgOrderNo=1000011533}'	 http://10.200.3.37:8081/payment/pay/recon/accountSandReconDataQuery.do
+		
+		queryFundInDataUrl=http://180.168.128.250:8081/payment/pay/recon/accountSandReconDataQuery.do  para={, , signature=SNeNFxulF+cjG/puxbr7RtXFxlYF0MUF1NhvFGX3BWS/ZMjucHkn6res1U8guQt7CmRVIqxVW6OO
+tWRMzQazmfkwkenoZfb8TZpn5rewY1FYz/MKtokzRUXYPbOvPjovL9DLqTiBiUcMMaw35JDWFKua
+cdrYXTIcsbuF4QzUr4n0gupNDZ2DosYk0M3Tcf6DC501v3M/Hyx/pUSsovGuO2YJZuS0gI/FcGCm
+HSnG6QB5huoUUr7TmmSRstGoYL+UvyIOCS96eUjYDMCHsbh5hhO94Vbp3H0KgymC7D182TuCgyoE
+GMhz3rbg1O/gTFGPlcm7bkuXoXzoYUQWO8TG+w==
+, }
+		
+		
+curl -X POST --data 'transactionType=T
+gateway=SAND_POS
+submitOrgOrderNo=1000011533
+signature=SNeNFxulF+cjG/puxbr7RtXFxlYF0MUF1NhvFGX3BWS/ZMjucHkn6res1U8guQt7CmRVIqxVW6OOtWRMzQazmfkwkenoZfb8TZpn5rewY1FYz/MKtokzRUXYPbOvPjovL9DLqTiBiUcMMaw35JDWFKuacdrYXTIcsbuF4QzUr4n0gupNDZ2DosYk0M3Tcf6DC501v3M/Hyx/pUSsovGuO2YJZuS0gI/FcGCmHSnG6QB5huoUUr7TmmSRstGoYL+UvyIOCS96eUjYDMCHsbh5hhO94Vbp3H0KgymC7D182TuCgyoEGMhz3rbg1O/gTFGPlcm7bkuXoXzoYUQWO8TG+w==' http://10.200.3.37:8081/payment/pay/recon/accountSandReconDataQuery.do
+		
+curl -X POST --data 'transactionType=T
+gateway=SAND_POS
+submitOrgOrderNo=1000011533
+signature=SNeNFxulF+cjG/puxbr7RtXFxlYF0MUF1NhvFGX3BWS/ZMjucHkn6res1U8guQt7CmRVIqxVW6OOtWRMzQazmfkwkenoZfb8TZpn5rewY1FYz/MKtokzRUXYPbOvPjovL9DLqTiBiUcMMaw35JDWFKuacdrYXTIcsbuF4QzUr4n0gupNDZ2DosYk0M3Tcf6DC501v3M/Hyx/pUSsovGuO2YJZuS0gI/FcGCmHSnG6QB5huoUUr7TmmSRstGoYL+UvyIOCS96eUjYDMCHsbh5hhO94Vbp3H0KgymC7D182TuCgyoEGMhz3rbg1O/gTFGPlcm7bkuXoXzoYUQWO8TG+w==' http://180.168.128.250:8081/payment/pay/recon/accountSandReconDataQuery.do		
+		
+		
+		
+sh /opt/scm_tools/tomcat/tcruntime-ctl-new.sh bank-sandpos restart		
+
+
+mstsc /v:10.45.0.***
+
+
+
+
+
+
+通用（General）
+↑↓←→：上下左右移动光标，注意不是不是 KJHL ！
+Alt：调出菜单
+Ctrl + Shift + P：调出命令板（Command Palette）
+Ctrl + ` ：调出控制台
+编辑（Editing）
+Ctrl + Enter：在当前行下面新增一行然后跳至该行
+Ctrl + Shift + Enter：在当前行上面增加一行并跳至该行
+Ctrl + ←/→：进行逐词移动
+Ctrl + Shift + ←/→进行逐词选择
+Ctrl + ↑/↓移动当前显示区域
+Ctrl + Shift + ↑/↓移动当前行
+选择（Selecting）
+Ctrl + D：选择当前光标所在的词并高亮该词所有出现的位置，再次 Ctrl + D 选择该词出现的下一个位置，在多重选词的过程中，使用 Ctrl + K 进行跳过，使用 Ctrl + U 进行回退，使用 Esc 退出多重编辑
+Ctrl + Shift + L：将当前选中区域打散
+Ctrl + J：把当前选中区域合并为一行
+Ctrl + M：在起始括号和结尾括号间切换
+Ctrl + Shift + M：快速选择括号间的内容
+Ctrl + Shift + J：快速选择同缩进的内容
+Ctrl + Shift + Space：快速选择当前作用域（Scope）的内容
+查找&替换（Finding&Replacing）
+F3：跳至当前关键字下一个位置
+Shift + F3：跳到当前关键字上一个位置
+Alt + F3：选中当前关键字出现的所有位置
+Ctrl + F/H：进行标准查找/替换，之后：
+Alt + C：切换大小写敏感（Case-sensitive）模式
+Alt + W：切换整字匹配（Whole matching）模式
+Alt + R：切换正则匹配（Regex matching）模式
+Ctrl + Shift + H：替换当前关键字
+Ctrl + Alt + Enter：替换所有关键字匹配
+Ctrl + Shift + F：多文件搜索&替换
+跳转（Jumping）
+Ctrl + P：跳转到指定文件，输入文件名后可以：
+@ 符号跳转：输入 @symbol 跳转到 symbol 符号所在的位置
+# 关键字跳转：输入 #keyword 跳转到 keyword 所在的位置
+: 行号跳转：输入 :12 跳转到文件的第12行。
+Ctrl + R：跳转到指定符号
+Ctrl + G：跳转到指定行号
+窗口（Window）
+Ctrl + Shift + N：创建一个新窗口
+Ctrl + N：在当前窗口创建一个新标签
+Ctrl + W：关闭当前标签，当窗口内没有标签时会关闭该窗口
+Ctrl + Shift + T：恢复刚刚关闭的标签
+屏幕（Screen）
+F11：切换普通全屏
+Shift + F11：切换无干扰全屏
+Alt + Shift + 2：进行左右分屏
+Alt + Shift + 8：进行上下分屏
+Alt + Shift + 5：进行上下左右分屏
+分屏之后，使用 Ctrl + 数字键 跳转到指定屏，使用 Ctrl + Shift + 数字键 将当前屏移动到指定屏
+
+
+https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential
+appid=wx8d97e09f8f2c3323&secret=a68be9424017646fd8564f6696026a7e
+
+curl 'https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=wx8d97e09f8f2c3323&secret=a68be9424017646fd8564f6696026a7e'
+
